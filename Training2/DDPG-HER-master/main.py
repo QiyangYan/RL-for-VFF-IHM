@@ -106,6 +106,20 @@ def friction_change(friction_state, env):
         print("terminate at friction change to low")
     return new_obs, rewards["RL_IHM"], terminated, _, infos
 
+def friction_change_to_high(friction_state, env):
+    friction_action_1 = [2, 0, True]
+    # input("Press Enter to continue...")
+    new_obs, rewards, terminated, _, infos = FRICTION.change_friction_full_obs(np.array(friction_action_1), env)
+    if terminated:
+        print("terminate at friction change to high")
+        return new_obs, rewards["RL_IHM"], terminated, _, infos
+
+def friction_change_to_low(friction_state, env):
+    friction_action_2 = [2, friction_state, True]
+    new_obs, rewards, terminated, _, infos = FRICTION.change_friction_full_obs(np.array(friction_action_2), env)
+    if terminated:
+        print("terminate at friction change to low")
+    return new_obs, rewards["RL_IHM"], terminated, _, infos
 
 def _compute_distance(a, b):
     ''' get pos difference and rotation difference
@@ -275,7 +289,9 @@ if Train:
                     "achieved_goal": [],
                     "desired_goal": [],
                     "next_state": [],
-                    "next_achieved_goal": []}
+                    "next_achieved_goal": [],
+                    "friction_change_reward": []
+                }
                 env_dict = env.reset()[0]
                 state = env_dict["observation"]
                 achieved_goal = env_dict["achieved_goal"]
@@ -318,8 +334,8 @@ if Train:
                     # print("Discrete action that represents different control mode", actions)
                     # friction_state, control_mode = discretize_action_to_control_mode(action[1])
                     # input("press")
-                    if friction_state != last_friction:
-                        next_env_dict, rewards, terminated, _, infos = friction_change(friction_state, env)
+                    if friction_state != last_friction or Train == True:
+                        next_env_dict, rewards, terminated, _, infos = friction_change_to_low(friction_state, env)
                         last_friction = friction_state
                         if terminated is False:
                             # input("press, friction change complete")
@@ -334,6 +350,7 @@ if Train:
                                     # print("terminate at: ", reward_dict["pos_control_position"],
                                     #       reward_dict["torque_control_position"])
                                     break
+                            next_env_dict, reward_after_FC, terminated, _, infos = friction_change_to_high(friction_state, env)
                     else:
                         for _ in range(10):
                             next_env_dict, reward_dict, terminated, _, info = env.step(action)
@@ -356,6 +373,7 @@ if Train:
                     episode_dict["action"].append(action.copy())
                     episode_dict["achieved_goal"].append(achieved_goal.copy())
                     episode_dict["desired_goal"].append(desired_goal.copy())
+                    episode_dict["friction_change_reward"].append(reward_after_FC - reward)
 
                     state = next_state.copy()
                     achieved_goal = next_achieved_goal.copy()
@@ -369,6 +387,7 @@ if Train:
                 episode_dict["state"].append(state.copy())
                 episode_dict["achieved_goal"].append(achieved_goal.copy())
                 episode_dict["desired_goal"].append(desired_goal.copy())
+                episode_dict["friction_change_reward"].append(reward_after_FC - reward)
                 episode_dict["next_state"] = episode_dict["state"][1:]
                 episode_dict["next_achieved_goal"] = episode_dict["achieved_goal"][1:]
                 mb.append(dc(episode_dict))
