@@ -377,6 +377,13 @@ def register_robotics_envs():
             max_episode_steps=100,
         )
 
+        register(
+            id=f"VariableFriction{suffix}-v3",
+            entry_point="gymnasium_robotics.envs.variable_friction_for_calibration.manipulate_block:MujocoHandBlockEnv",
+            kwargs=kwargs,
+            max_episode_steps=100,
+        )
+
         # Alias for "Full"
         register(
             id=f"HandManipulateBlock{suffix}-v0",

@@ -3,12 +3,12 @@ import os
 import numpy as np
 from gymnasium.utils.ezpickle import EzPickle
 
-from gymnasium_robotics.envs.variable_friction_continuous import (
+from gymnasium_robotics.envs.variable_friction_for_calibration import (
     MujocoManipulateEnv,
 )
 
 # Ensure we get the path separator correct on windows
-MANIPULATE_BLOCK_XML = os.path.join("/Users/qiyangyan/Desktop/IHM_finger/IHM_simple_convex", "IHM.xml")
+MANIPULATE_BLOCK_XML = os.path.join("/Users/qiyangyan/Desktop/IHM_finger/IHM_simple_convex_for_calibration", "IHM.xml")
 
 
 class MujocoHandBlockEnv(MujocoManipulateEnv, EzPickle):

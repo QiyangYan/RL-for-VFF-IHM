@@ -163,94 +163,9 @@ class MujocoHandEnv(get_base_hand_env(MujocoRobotEnv)):
 
 
     def _set_action(self, action=None):
-
         ctrlrange = self.model.actuator_ctrlrange
-
-        if isinstance(action, np.int64):
-            '''slide fixed magnitude with discrete action space, discrete(4)'''
-            step_friction_state, pos_idx = self.action_to_control(action)
-            if step_friction_state != self.last_friction_state:
-                self.friction_change_penalty = True
-            else:
-                self.friction_change_penalty = False
-            self.last_friction_state = step_friction_state
-            if pos_idx != self.pos_idx:
-                self.switch_ctrl_type_pos_idx(self.pos_idx)
-                self.pos_idx = pos_idx
-            if self.firstEpisode:
-                self.data.ctrl[1] = 0  # change friction if stuck
-                self.data.ctrl[0] = 0
-            else:
-                # left finger low/torque, right finger high/pos
-                self.data.ctrl[1-self.pos_idx] = 1
-                self.data.ctrl[self.pos_idx] = self.data.qpos[self.pos_idx * 2 + 1] - 0.01
-                # print("toque is: ", self.data.ctrl[self.torque_idx], "action is: ", self.data.ctrl[self.pos_idx])
-                # print("move: ", self.data.ctrl[self.pos_idx], self.data.qpos[self.pos_idx * 2 + 1], step_friction_state)
-
-        elif self.friction_withRL == True and action[2] == True:
-            '''use RL for friction change, (3, )'''
-            print("use RL for friction change")
-            assert action.shape == (3,), f"Require an extra friction change indicator at action[2]: {len(action)}"
-            assert isinstance(action[2], bool), "friction_changing must be a boolean"
-            self._set_action_friction(action)
-
-        elif len(action) == 2:
-            '''IHM with continuous action space
-            gripper_pos_ctrl = (0, 1.68)
-            self.friction_state = (1, -1)
-            if control mode has different friction state as the current position
-            '''
-            step_friction_state, control_mode = self.discretize_action_to_control_mode(action[1])
-            if step_friction_state != self.last_friction_state:
-                self.friction_change_penalty = True
-            else:
-                self.friction_change_penalty = False
-
-            _, self.pos_idx = self.action_to_control(control_mode)
-            self.switch_ctrl_type_pos_idx(self.pos_idx)
-            if (action[0] + 1) / 2  != self.gripper_pos_ctrl:
-                # print("---------------------", self.pos_idx, control_mode)
-                # input("press enter to continue")
-                self.gripper_pos_ctrl = (action[0] + 1) / 2 # action is the movement related to the current position
-                # self.move = 0
-                self.start = self.data.qpos[self.pos_idx*2+1]
-
-            if self.firstEpisode:
-                self.data.ctrl[1] = 0  # change friction if stuck
-                self.data.ctrl[0] = 0
-            else:
-                self.data.ctrl[1 - self.pos_idx] = 1
-                ''' Make sure the qpos changed by given amount '''
-                if self.data.qpos[self.pos_idx * 2 + 1] - self.start < self.gripper_pos_ctrl:
-                    self.data.ctrl[self.pos_idx] = self.data.ctrl[self.pos_idx] - 0.01
-                else:
-                    self.data.ctrl[self.pos_idx] = self.data.qpos[self.pos_idx * 2 + 1]
-                    'consider adding a condition here to compare qpos and ctrl to ensure it doesnt differ too much and result in' \
-                    'inability to take small movement'
-                # print("check: ", self.data.qpos[self.pos_idx * 2 + 1] - self.start, self.data.qpos[self.pos_idx * 2 + 1], self.data.ctrl[self.pos_idx], self.gripper_pos_ctrl)
-
-                ''' Make sure the ctrl changed by given amount '''
-                # if self.moved != self.gripper_pos_ctrl:
-                #     self.moved += 0.01  # amount of movement
-                # if self.moved < self.gripper_pos_ctrl:
-                #     self.data.ctrl[self.pos_idx] = self.data.ctrl[self.pos_idx] - 0.01
-                # elif self.moved > self.gripper_pos_ctrl:
-                #     self.data.ctrl[self.pos_idx] = self.data.ctrl[self.pos_idx] - (self.gripper_pos_ctrl - (self.moved - 0.01))
-                #     self.moved = self.gripper_pos_ctrl
-                # else:
-                #     assert self.moved == self.gripper_pos_ctrl, "moved amount should be equal as the action required"
-                #     pass
-
-        else:
-            '''RL-inspired method and pick-up process, (3, )
-            This friction change is used if not RL for friction change
-            '''
-            # print("here")
-            assert action.shape == (3,), f"Action should have size 3: {action.shape}"
-            assert action[2] == 0 or action[2] == 1, f"friction_changing must be a int boolean 0 or 1: {action[2]}"
-            assert self.friction_withRL == False
-            self._set_action_continuous(action)
-
+        assert action is not None, f"action should not be None: {action}"
+        self.data.ctrl[1] = action
         self.data.ctrl[:] = np.clip(self.data.ctrl, ctrlrange[:, 0], ctrlrange[:, 1])
 
     def discretize_action_to_control_mode(self, action):

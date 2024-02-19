@@ -56,14 +56,14 @@ from typing import Union
 import numpy as np
 from gymnasium import error
 
-from gymnasium_robotics.envs.variable_friction_friction import MujocoHandEnv
+from gymnasium_robotics.envs.variable_friction_continuous import MujocoHandEnv
 from gymnasium_robotics.utils import rotations
 from scipy.spatial.transform import Rotation
 
 import xml.etree.ElementTree as ET
 import os
 
-from gymnasium_robotics.envs.plot_array import plot_numbers, plot_numbers_two_value
+# from gymnasium_robotics.envs.plot_array import plot_numbers, plot_numbers_two_value
 
 def quat_from_angle_and_axis(angle, axis):
     assert axis.shape == (3,)
@@ -127,13 +127,13 @@ def get_base_manipulate_env(HandEnvClass: MujocoHandEnv):
             self.randomize_initial_position = randomize_initial_position
             self.distance_threshold = distance_threshold
             self.rotation_threshold = rotation_threshold
-            self.r_threshold = 0.002
+            self.r_threshold = 0.005 # 0.001 is more accurate
             self.d_threshold = 0.01
             self.reward_type = reward_type
             self.slip_pos_threshold = slip_pos_threshold
             self.slip_rot_threshold = slip_rot_threshold
             self.switchFriction_count = 0;
-            self.terminate_r_limit = [0.055,0.14]
+            self.terminate_r_limit = [0.05,0.14]
             self.L = 0.015
             self.success = False
             self.left_contact_idx = None;
@@ -147,6 +147,10 @@ def get_base_manipulate_env(HandEnvClass: MujocoHandEnv):
             self.last_angle = None
             self.slip_error_angle = None
             self.reward_history = []
+            self.pick_up_height = 0
+            # self.pick_up_height = 3
+            self.reset_everything = True
+            self.goal_radi = np.zeros(2)
 
             # self.successSlide = False
             # self.ignore_z_target_rotation = ignore_z_target_rotation
@@ -162,54 +166,71 @@ def get_base_manipulate_env(HandEnvClass: MujocoHandEnv):
                 **kwargs,
             )
 
+        def store_pos_param(self):
+            self.pos_param = []
+            self.pos_param.append(self.model.actuator_gainprm[0][0])
+            self.pos_param.append(self.model.actuator_biastype[0])
+            self.pos_param.append(self.model.actuator_biasprm[0][1])
+            self.pos_param.append(np.array([0, 1.68]))
+            print(self.pos_param)
 
-        def _is_success_radi(self,achieved_goal,desired_goal):
-            '''find the actual goal, 3 = 2+1'''
-            # print("object:target_corner1",self.model.site("object:target_corner1").pos)  # before get new goal
-            # print("_is_success_radi")
-            # d_radi, r_left, r_right = self._radi_error(achieved_goal[:7], desired_goal[:7])
+        def _is_success(self, achieved_goal, desired_goal):
+            if len(achieved_goal) == 9:  # 9 element
+                d_radi = abs(achieved_goal[7:] - desired_goal[7:])
+                d_pos = self._goal_distance(achieved_goal[:7], desired_goal[:7])
+                success_pos = (d_pos < self.d_threshold).astype(np.float32)
+            else:
+                assert len(achieved_goal) == 6 and len(
+                    desired_goal) == 9, f"Achieved goal has a length of {len(achieved_goal)}, " \
+                                        f"but desired goal has a length of {len(desired_goal)}"
+                d_radi = abs(achieved_goal[:2] - desired_goal[7:])
+                d_pos = 0
+                success_pos = 1
+            success_radi = (np.mean(abs(d_radi)) < self.r_threshold).astype(np.float32)
+            self.success = success_radi
+            # print("check: ", d_radi)
+            # if self.success:
+                # print("check: ", d_radi)
+            return success_radi
+
+
+        def _is_success_radi(self, achieved_goal, desired_goal):
+            assert achieved_goal.shape == desired_goal.shape, \
+                f"Achieved goal and desired goal might have different shape of {achieved_goal.shape, desired_goal.shape}"
             if len(achieved_goal.shape) == 1:
-                '''each step'''
-                # print("each step")
-                # desired_goal = desired_goal[:8]
-                if self.friction_changing == True:
+                '''check if radi is success for single step'''
+                if len(achieved_goal) == 9: # 9 element
                     d_radi = abs(achieved_goal[7:] - desired_goal[7:])
-                    success_pos = 1
-                    d_pos = 0
-                else:
-                    d_radi = abs(achieved_goal[7:] - desired_goal[7:])
-                    # print("check achieved:", achieved_goal[-2:])
                     d_pos = self._goal_distance(achieved_goal[:7],desired_goal[:7])
                     success_pos = (d_pos < self.d_threshold).astype(np.float32)
-
-                d_radi_mean = np.mean(d_radi)
-                success_radi = (np.mean(abs(d_radi_mean)) < self.r_threshold).astype(np.float32)
-                # print("success_radi: ", d_radi_mean, d_radi, self.r_threshold)
-
-            elif len(achieved_goal.shape) > 1:
-                '''train'''
-                # print("train")
-                # desired_goal = desired_goal[:,:8]
-                # print("achieved:",achieved_goal[:,7:])
-                # print("desired:",desired_goal[:,7:])
-                # print("self.friction_changing: ", self.friction_changing)
-                if self.friction_changing == True:
-                    d_radi = abs(achieved_goal[:, :2] - desired_goal[:, :2])
+                else:
+                    assert len(achieved_goal) == 2 and len(
+                        desired_goal) == 2, f"Achieved goal has a length of {len(achieved_goal)}, " \
+                                            f"but desired goal has a length of {len(desired_goal)}"
+                    d_radi = abs(achieved_goal - desired_goal)
                     d_pos = 0
                     success_pos = 1
+                success_radi = (np.mean(abs(d_radi)) < self.r_threshold).astype(np.float32)
+            elif len(achieved_goal.shape) > 1:
+                # print("Used by replay buffer")
+                # ValueError("More than one achieved goal. Might be needed by replay buffer")
+                '''train'''
+                if achieved_goal.shape[1] == 9:  # 9 element
+                    d_radi = abs(achieved_goal[:, 7:] - desired_goal[:, 7:])
+                    d_pos = self._goal_distance(achieved_goal[:, 7], desired_goal[:, 7])
+                    success_pos = (d_pos < self.d_threshold).astype(np.float32)
                 else:
-                    d_radi = abs(achieved_goal[:,7:] - desired_goal[:,7:])
-                    # print("d_radi:", d_radi)
-                    # print(achieved_goal[:,:7].shape,desired_goal[:,:7].shape)
-                    d_pos = self._goal_distance(achieved_goal[:,:7],desired_goal[:,:7])
-                    success_pos = np.where(d_pos < self.d_threshold, 1, 0)
+                    assert achieved_goal.shape[1] == 2 and desired_goal.shape[1] == 2, \
+                        f"Achieved goal has a length of {achieved_goal.shape}, " \
+                        f"but desired goal has a length of {desired_goal.shape}"
+                    d_radi = abs(achieved_goal - desired_goal)
+                    d_pos = 0
+                    success_pos = 1
 
                 d_radi_mean = np.mean(d_radi, axis=1).reshape(-1, 1)
-                # print("train:",d_radi_mean)
                 d_radi_mean = np.where(d_radi_mean == 0, 1, d_radi_mean)
                 success_radi = np.where(d_radi_mean < self.r_threshold, 1, 0)
-                # print("success_radi: ", d_radi_mean, self.r_threshold)
-
+                return success_radi, success_pos, d_radi_mean, d_pos
             else:
                 raise ValueError("Unsupported array shape.")
 
@@ -256,8 +277,19 @@ def get_base_manipulate_env(HandEnvClass: MujocoHandEnv):
 
             return radius_al,radius_ar
 
-        def compute_reward_discrete(self, achieved_goal, goal, info):
-            success_radi, success_pos, d_radi, d_pos = self._is_success_radi(achieved_goal, goal)
+        def add_terminate_penalty(self, achieved_goal):
+            # print("shape: ", achieved_goal.shape)
+            penalty = np.zeros(achieved_goal.shape[0])
+            for idx in range(achieved_goal.shape[0]):
+                radius_l = achieved_goal[idx, 0]
+                radius_r = achieved_goal[idx, 1]
+                if radius_l == 0 or radius_r == 0:
+                    pass
+                elif (not self.terminate_r_limit[0] < radius_l < self.terminate_r_limit[1]) or (not self.terminate_r_limit[0] < radius_r < self.terminate_r_limit[1]):
+                    penalty[idx] = -5
+                elif (not(0.03 < achieved_goal[idx,-2] < 1.65) or not(0.03 < achieved_goal[idx,-4] < 1.65)):
+                    penalty[idx] = -5
+            return penalty
 
 
         def compute_reward(self, achieved_goal, goal, info):
@@ -269,11 +301,29 @@ def get_base_manipulate_env(HandEnvClass: MujocoHandEnv):
                 print("sparse")
                 return success.astype(np.float32) - 1.0
             else:
+                if len(goal) == 9:
+                    success_radi, success_pos, d_radi, d_pos = self._is_success_radi(achieved_goal[:2], goal[7:])
+                else:
+                    assert goal.shape == (1024, 6), f"The shape of goal is wrong, check: {goal.shape}"
+                    success_radi, success_pos, d_radi, d_pos = self._is_success_radi(achieved_goal[:,:2], goal[:,:2])
+                    penalty = self.add_terminate_penalty(achieved_goal)
+                    # print("test")
 
-                # print("The goals for the training: ", achieved_goal, goal)
-                success_radi, success_pos, d_radi, d_pos = self._is_success_radi(achieved_goal, goal)
+                    reward_dict = {
+                        "RL_IHM": - abs(d_radi) * 20 + penalty + success_radi,
+                        "RL_inspired_IHM_with_RL_Friction": None,
+                        "d_radi_seperate": d_radi * 20,
+                        "action_complete": self.check_action_complete(),
+                        "d_radi": np.mean(abs(d_radi)) * 20,
+                        "d_pos": d_pos * 20,
+                        "pos_control_position": self.data.qpos[self.pos_idx * 2 + 1],
+                        "torque_control_position": self.data.qpos[(1-self.pos_idx) * 2 + 1],
+                        "pos_idx": self.pos_idx
+                    }
 
-                ''' with reference to last time step '''
+                    return reward_dict
+
+                ''' This part produce reward for friction change '''
                 if self.last_angle is None:
                     self.last_height = self._utils.get_joint_qpos(self.model, self.data, "joint:object")[2]
                     self.last_angle = self._utils.get_joint_qpos(self.model, self.data, "joint:object")[4]
@@ -297,99 +347,53 @@ def get_base_manipulate_env(HandEnvClass: MujocoHandEnv):
                     self.last_height = z
                     self.last_angle = current_angle
 
-
-                if self.step_count_for_friction_change > 60:
-                    stuck = -1
+                if self.friction_change_penalty:
+                    friction_change_penalty = -0.5
                 else:
-                    stuck = 0
+                    friction_change_penalty = 0
 
-                ''' friction_change_reward '''
-                # print("error: ", self.friction_change_error, self.slip_error, self.slip_error_angle)
-                # print("error reward: ", - self.friction_change_error * 20000 - self.slip_error * 20000 + stuck - self.slip_error_angle * 20000)
+                if self.success:
+                    # print("success")
+                    success = 1
+                else:
+                    success = 0
 
-                # print("check: ", d_radi)
+                if self.slip_terminate:
+                    penalty = -5
+                else:
+                    penalty = 0
 
+                reward_dict = {
+                    "RL_IHM": None,
+                    "RL_inspired_IHM_with_RL_Friction": None,
+                    "d_radi_seperate": d_radi * 20,
+                    "action_complete": self.check_action_complete(),
+                    "d_radi": np.mean(abs(d_radi)) * 20,
+                    "d_pos": d_pos * 20,
+                    "pos_control_position": self.data.qpos[self.pos_idx*2+1],
+                    "torque_control_position": self.data.qpos[(1 - self.pos_idx) * 2 + 1],
+                }
+
+                'RL-based IHM'
                 'without support'
-                if self.IHM_RL:
-                    if self.pick_up_height == 3:
-                        reward = - np.mean(abs(d_radi)) * 20 - self.slip_error * 20000 + stuck - self.slip_error_angle * 20000
-                        return reward
-                    else:
-                        # print("check", d_radi, achieved_goal)
-                        reward = - np.mean(abs(d_radi)) * 20 + success_radi * 2
-                        return reward
+                if self.pick_up_height == 3:
+                    # print("pick up height is 3")
+                    reward_dict["RL_IHM"] = - np.mean(abs(d_radi)) * 20 - self.slip_error * 20000 - self.slip_error_angle * 20000 + penalty
                 else:
-                    if self.pick_up_height == 3:
-                        reward = - self.friction_change_error * 20000 - self.slip_error * 20000 + stuck - self.slip_error_angle * 20000
-                        self.reward_history.append(reward)
-                        return reward
-                    else:
-                        'with support'
-                        assert self.pick_up_height == 0
-                        reward = - self.friction_change_error * 20000
-                        if reward >= -0.5:
-                            reward = 0
-                        self.reward_history.append(reward)
-                        return reward
+                    'with support'
+                    assert self.pick_up_height == 0
+                    reward_dict["RL_IHM"] = - np.mean(abs(d_radi)) * 20 + success + penalty
 
-                '''Add more reward term'''
-                # slip penalty
-                # d_slip, drop = self._slip_indicator(achieved_goal)  # d_slip is negative value
+                'RL_based_Friction'
+                'without support'
+                if self.pick_up_height == 3:
+                    reward_dict["RL_inspired_IHM_with_RL_Friction"] = - self.friction_change_error * 20000 - self.slip_error * 20000 - self.slip_error_angle * 20000 + penalty
+                else:
+                    'with support'
+                    assert self.pick_up_height == 0
+                    reward_dict["RL_inspired_IHM_with_RL_Friction"] = - self.friction_change_error * 20000 + penalty
 
-                # same action reward
-                # if not self.same_friction and not self.same_motor_direction:
-                #     d_action = -1
-                #     self.switchFriction_count += 1
-                # elif not self.same_friction or not self.same_motor_direction:
-                #     self.switchFriction_count += 1
-                #     d_action = -0.5
-                # else:
-                #     d_action = 0
-                #
-                # if self.switchFriction_count < 7:
-                #     d_action = 0
-
-
-        def compute_reward_slide(self, achieved_goal, goal, info):
-            self.friction_steps = 0
-            self.reward_type = "dense"
-            # print("reward_type:",self.reward_type)
-
-            if self.reward_history != []:
-                if self.friction_change_count % 200 == 0 or self.friction_change_count == 1:
-                    print("plot---------------------------------------------------------------------------------------")
-                    # plot_numbers(self.reward_history,
-                    #              '/Users/qiyangyan/Desktop/LearnFrictionChange/plot/torque_history',
-                    #              'reward')
-                self.reward_history = []
-
-            if self.reward_type == "sparse":
-                '''success是 0, unsuccess是 1'''
-                success, _, _ = self._is_success_radi(achieved_goal, goal)
-                print("sparse")
-                return success.astype(np.float32) - 1.0
-            else:
-                if self.last_angle is None:
-                    self.start_height = self._utils.get_joint_qpos(self.model, self.data, "joint:object")[2]
-
-                # print("The goals for the training: ", achieved_goal, goal)
-                # success_radi, success_pos, d_radi, d_pos = self._is_success_radi(achieved_goal, goal)
-                # # print("sliding")
-                # return {"d_radi": np.mean(abs(d_radi)) * 20, # this is the average of two radi
-                #         "d_pos": d_pos, # distance from goal pose
-                #         "d_radi_seperate": d_radi * 20, # this is two radi from two actuator
-                #        }
-
-                # print("----- achieved goal: ", achieved_goal[-2:])
-                success_radi, success_pos, d_radi, d_pos = self._is_success_radi(achieved_goal, goal)
-                # print("check d_radi: ", d_radi)
-                # print("check 1", d_radi, achieved_goal)
-                # print("sliding")
-                # return {"d_radi": np.mean(abs(d_radi)) * 20, # this is the average of two radi
-                #         "d_pos": d_pos, # distance from goal pose
-                #         "d_radi_seperate": d_radi * 20, # this is two radi from two actuator
-                #        }
-                return - np.mean(abs(d_radi)) * 20 + success_radi * 2
+                return reward_dict
 
     return BaseManipulateEnv
 
@@ -410,7 +414,6 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
             # print("initialising")
 
         achieved_goal = np.concatenate((object_qpos, achieved_goal_radi))
-        # print(achieved_goal)
         assert achieved_goal.shape == (9,)
         return achieved_goal
 
@@ -418,14 +421,16 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
         for name, value in initial_qpos.items():
             self.data.set_joint_qpos(name, value)
         self._mujoco.mj_forward(self.model, self.data)
+        self.store_pos_param()
 
-    def _reset_sim(self, reset_everything):
+    def _reset_sim(self):
         # print("reset")
         '''self.data.time = self.initial_time
         self.data.qpos[:] = np.copy(self.initial_qpos)
         self.data.qvel[:] = np.copy(self.initial_qvel)
         '''
         # self.action_count = 0;
+        self.goal_radi = np.zeros(2)
         self.switchFriction_count = 0;
         # self.data.ctrl = 0
         self.count = 0
@@ -439,6 +444,8 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
         self.right_contact_idx = None;
         self.IHM_start = False
         self.friction_changing = False
+        self.friction_state = 0
+        self.rotate_start == False
 
         # if self.last_height is not None:
         #     print("Error of the episode(height & radi): ", abs(self.last_height - self.start_height), abs(self.last_r_diff))
@@ -449,10 +456,11 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
         self.last_r_diff = 0
         self.last_height = None
         self.last_angle = None
-        self.start_height = None
+        self.start_height = self._utils.get_joint_qpos(self.model, self.data, "joint:object")[2]
         self.start_radi = None
 
-        if self.slip_terminate == True or reset_everything is True:
+        if self.slip_terminate == True or self.reset_everything is True:
+            # print("\033[92m reset everything \033[0m")
             self.reset_ctrl_type()
             self.pick_up = False
             self.closing = False
@@ -560,7 +568,8 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
         # Run the simulation for a bunch of timesteps to let everything settle in.
         if self.firstEpisode:
             for _ in range(10):
-                self._set_action(np.zeros(2))
+                self._set_action(np.array([0,0,False]))
+                self.pos_idx = 0
                 try:
                     self._mujoco.mj_step(self.model, self.data, nstep=self.n_substeps)
                 except Exception:
@@ -568,6 +577,24 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
             self.firstEpisode = False
 
         return True
+
+    def reset_ctrl_type(self):
+        # 0 is left finger, 1 is right finger
+        torque_idx = 1
+        pos_idx = 0
+
+        self.model.actuator_gainprm[torque_idx][0] = 1
+        self.model.actuator_biastype[torque_idx] = 0
+        self.model.actuator_biasprm[torque_idx][1] = 0
+        self.model.actuator_ctrlrange[torque_idx] = [0, 1]
+
+        self.model.actuator_gainprm[pos_idx][0] = self.pos_param[0]
+        self.model.actuator_biastype[pos_idx] = self.pos_param[1]
+        self.model.actuator_biasprm[pos_idx][1] = self.pos_param[2]
+        self.model.actuator_ctrlrange[pos_idx] = self.pos_param[3]
+
+        self.data.ctrl[torque_idx] = 1
+        self.data.ctrl[pos_idx] = self.data.qpos[pos_idx * 2 + 1]  # 0 -> 1, 1 -> 3
 
     # def _reset_sim_terminate(self):
     #     # print("reset")
@@ -718,9 +745,9 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
         x = self.np_random.uniform(x_range[0], x_range[1])
         y_range = [-0.24, 1.625*abs(x)-0.315]
         y = self.np_random.uniform(y_range[1],y_range[0])
-        coord = [x, y-0.02, z]
+        # coord = [x, y-0.02, z]
+        coord = [x, np.clip(y-0.02, -0.24, -0.30), z]
         return coord
-
 
     def _sample_goal(self):
         # Select a goal for the object position.
@@ -749,7 +776,7 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
         '''Select a goal for the object rotation.'''
         target_quat = None
         if self.target_rotation == "z":
-            angle = self.np_random.uniform(-np.pi/4, np.pi/4)
+            angle = self.np_random.uniform(-np.pi / 4, np.pi / 4)
             axis = np.array([0.0, 0.0, 1.0])
             target_quat = quat_from_angle_and_axis(angle, axis)
         elif self.target_rotation in "fixed":
@@ -773,24 +800,28 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
         '''
         goal_radi = np.zeros(2)
 
-        goal = np.concatenate((target_pos,target_quat,goal_radi))
+        goal = np.concatenate((target_pos, target_quat, goal_radi))
         assert goal.shape == (9,)
 
         return goal
 
-    def _get_contact_point(self, goal):
+    def _get_contact_point(self):
         contact_coord = []
         for num in range(self.number_of_corners):
             contact_idx = self._model_names._site_name2id[f"target:corner{num + 1}"]
             contact_coord.append(self.data.site_xpos[contact_idx])
+        # print("contact point: ", contact_coord)
             # print("contact:", contact_idx, self.data.site_xpos[contact_idx])
         left_index, left_contact = max(enumerate(contact_coord), key=lambda coord: coord[1][0])
         right_index, right_contact = min(enumerate(contact_coord), key=lambda coord: coord[1][0])
+        # print("left contact: ", left_contact, right_contact)
 
         # print("target position: ", self._utils.get_joint_qpos(self.model, self.data, "joint:target"))
 
         self.left_contact_idx = self._model_names._site_name2id[f"object:corner{left_index + 1}"]
         self.right_contact_idx = self._model_names._site_name2id[f"object:corner{right_index + 1}"]
+        # print("left index of target and object:", left_index, self.left_contact_idx, right_index,
+        #       self.right_contact_idx)
         # print("left index of target and object:", left_index, self.left_contact_idx)
 
         left_contact[2] = 0.025
@@ -798,14 +829,12 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
         right_contact[2] = 0.025
         right_contact_coord = np.concatenate((right_contact, [0, 0, 0, 0]))
 
-        goal_radi = self.compute_goal_radi(left_contact_coord[:3],right_contact_coord[:3])
-        goal[7:] = goal_radi
-        assert goal.shape == (9,)
+        self.goal_radi = self.compute_goal_radi(left_contact_coord[:3], right_contact_coord[:3])
 
         self._utils.set_joint_qpos(self.model, self.data, "site-checker", right_contact_coord)
         self._utils.set_joint_qvel(self.model, self.data, "site-checker", np.zeros(6))
 
-        return goal
+        # print("goal_radi: ", self.goal_radi)
 
     def compute_goal_radi(self,a, b):
         '''
@@ -847,62 +876,9 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
 
         self._mujoco.mj_forward(self.model, self.data)
 
+        self._get_contact_point()
+        self.goal[7:] = self.goal_radi
 
-    def _get_obs_for_multiple_policies(self):
-        # what's expect with single joint: (array([], dtype=float64), array([], dtype=float64))
-        # what's expected:
-        # Position: 4 + 1 slide joints, 2 6DOF free joints, 1 + 4 + 2*7 = 19 element
-        # each slide joint has position with 1 element, each free joints has position with 7 elements
-        # for free joint, 3 elements are (x,y,z), 4 elements are (x,y,z,w) quaternion
-        # Velocity: 4 + 1 slide joints, 2 DOF free joints, 1 + 4 + 2*6 = 17 element
-        # Result:
-        # pos = [0. 0.0.0.0. 0.-0.251365 0.1.0.0.0. 0.0.0.1.0.0.0.]
-        # vel = [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
-
-        robot_qpos = self.data.qpos
-        robot_qvel = self.data.qvel
-
-        # achieved_goal = robot_qpos[4:11]
-        object_qvel = robot_qvel[5:11]
-        robot_qpos = robot_qpos[1:5]
-        robot_qvel = robot_qvel[1:5]
-
-        # simplify observation space
-
-        '''object information: radius to two motor + current coordinate'''
-        achieved_goal = (
-            self._get_achieved_goal().ravel()
-        )  # this contains the current radius to two motor + current coordinate
-
-        '''new observation
-            position: 3 slide joints, 2 radius, pos of 6DOF free joint (3 elements)
-            velocity: 3 slide joints, vel of 6 DOF free joint (6 elements)
-        '''
-
-        '''useful infor:
-        robot_joint_pos: 3 element
-        achieved-goal: 3 + 2
-        '''
-        # print(np.array(robot_joint_pos))
-        # achieved_goal = [achieved_goal[:3],achieved_goal[7:]]
-        # assert achieved_goal.shape == (5,)
-        assert robot_qpos.shape == (4,)
-
-        # for observation: 3 + 2 + 3
-        observation = np.concatenate(
-            [
-                robot_qpos,
-                # robot_qvel,
-                # object_qvel,
-                achieved_goal
-            ]
-        )
-
-        return {
-            "observation": observation.copy(),
-            "achieved_goal": achieved_goal.copy(),
-            "desired_goal": self.goal.ravel().copy(),
-        }
 
     def _get_obs(self):
 
@@ -920,28 +896,92 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
         achieved_goal = (
             self._get_achieved_goal().ravel()
         )  # this contains the current radius to two motor + current coordinate
+        # print("achieved goal: ", achieved_goal)
 
         '''two finger, two finger insert'''
         assert robot_qpos.shape == (4,)
 
-        # for observation: 4 + 4 + 2
+        # for observation: 4 + 4 + 2 + 1
         observation = np.concatenate(
             [
                 robot_qpos, # 4 element
                 robot_qvel, # 4 element
-                achieved_goal[-2:] # last two element, radius
+                achieved_goal[-2:], # last two element, radius
             ]
         )
 
-        return {
+        # if len(self.goal) == 9:
+        #     self.goal[7:] = self.goal_radi
+        #     print("add goal radi", self.goal[-2:], achieved_goal[-2:])
+
+        complete_obs = {
             "observation": observation.copy(),
             "achieved_goal": achieved_goal.copy(),
             "desired_goal": self.goal.ravel().copy(),
         }
 
+        achieved_radi_with_robot = np.concatenate(
+            [
+                achieved_goal[-2:],
+                robot_qpos,  # left, leftInsert, right, rightInsert
+            ]
+        )
+
+        desired_radi_with_robot = np.concatenate(
+            [
+                complete_obs["desired_goal"][-2:],
+                robot_qpos,  # left, leftInsert, right, rightInsert
+            ]
+        )
+
+        # print("desired goal: ", self.goal[-2:])
+
+        self.start_height = self._utils.get_joint_qpos(self.model, self.data, "joint:object")[2]
+        new_height = self._utils.get_joint_qpos(self.model, self.data, "joint:object")[2]
+        if new_height > self.start_height:
+            self.start_height = new_height.copy()
+
+        if self.pick_up_height == 3:
+            obs = {
+                "observation": complete_obs["observation"].copy(),
+                "achieved_goal": complete_obs["achieved_goal"][-2:],
+                "desired_goal": complete_obs["desired_goal"][-2:]
+            }
+        else:
+            assert self.pick_up_height == 0
+            obs = {
+                "observation": complete_obs["observation"].copy(),
+                "achieved_goal": achieved_radi_with_robot.copy(),
+                "desired_goal": desired_radi_with_robot
+            }
+
+        # 'observation with only radius'
+        # achieved_goal_last_two = complete_obs["achieved_goal"][-2:]
+        # desired_goal_last_two = complete_obs["desired_goal"][-2:]
+        # if len(desired_goal_last_two) != 2:
+        #     desired_goal_last_two = np.zeros(2)
+        # obs = {
+        #     "observation": np.concatenate([achieved_goal_last_two, desired_goal_last_two]),
+        #     "achieved_goal": complete_obs["achieved_goal"][-2:],
+        #     "desired_goal": complete_obs["desired_goal"][-2:]
+        # }
+
+        return obs
+
+        # return {
+        #     "observation": observation.copy(),
+        #     "achieved_goal": achieved_goal.copy(),
+        #     "desired_goal": self.goal.ravel().copy(),
+        # }
+
     def compute_terminated(self, achieved_goal, desired_goal, info):
+
         # exceed range
-        radius_l, radius_r = self._compute_radi(achieved_goal[:7])
+        if len(achieved_goal) == 2 or len(achieved_goal) == 6:
+            radius_l, radius_r = achieved_goal[0], achieved_goal[1]
+        else:
+            assert len(achieved_goal) == 9, "achieved goal should have length of 9"
+            radius_l, radius_r = self._compute_radi(achieved_goal[:7])
         # print("compute terminated", z)
         # radius_l = achieved_goal[7]
         # radius_r = achieved_goal[8]
@@ -949,7 +989,10 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
         # print("check termination")
         # print("check terminate: ", self._utils.get_joint_qpos(self.model, self.data, "joint:object")[2], self.IHM_start)
 
-        if self.stuck_terminate == True:
+        if np.any(achieved_goal) == 0:
+            print("\033[91m| Empty Achieved Goal \033[0m")
+            return False
+        elif self.stuck_terminate == True:
             self.slip_terminate = True
             print("\033[91m| Terminate: stuck \033[0m")
             # print("------------------------------------")
@@ -957,17 +1000,17 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
             return True
         elif (not self.terminate_r_limit[0] < radius_l < self.terminate_r_limit[1]) or (not self.terminate_r_limit[0] < radius_r < self.terminate_r_limit[1]):
             self.slip_terminate = True
-            print("terminate: out of range", radius_l, radius_r)
+            print("terminate: out of range, check", radius_l, radius_r)
             # print("------------------------------------")
             # print("------------------------------------")
             return True
-        elif self.success:
-            print("success")
-            self.data.ctrl[2] = self.data.qpos[2]
-            self.data.ctrl[3] = self.data.qpos[4]
-            print("------------------------------------")
-            print("------------------------------------")
-            return True
+        # elif self.success:
+        #     print("success")
+        #     self.data.ctrl[2] = self.data.qpos[2]
+        #     self.data.ctrl[3] = self.data.qpos[4]
+        #     print("------------------------------------")
+        #     print("------------------------------------")
+        #     return True
         elif self._utils.get_joint_qpos(self.model, self.data, "joint:object")[2] < 0.092 and self.data.qpos[0] >= 0.1 and self.pick_up_height == 3:
             self.slip_terminate = True
             print("terminate: pos slip with error of (limit - 0.092): ", abs(self._utils.get_joint_qpos(self.model, self.data, "joint:object")[2]))
@@ -981,6 +1024,10 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
         elif self._utils.get_joint_qpos(self.model, self.data, "joint:object")[4] > 0.1:
             self.slip_terminate = True
             print("terminate: angle slip with error of (limit - 0.1): ", self._utils.get_joint_qpos(self.model, self.data, "joint:object")[4])
+            return True
+        elif (not(0.03 < self.data.qpos[1] < 1.65) or not(0.03 < self.data.qpos[3] < 1.65)) and self.pick_up == True:
+            self.slip_terminate = True
+            print("terminate: exceed actuator pos limit: ", self.data.qpos[1], self.data.qpos[3])
             return True
         else:
             """All the available environments are currently continuing tasks and non-time dependent. The objective is to reach the goal for an indefinite period of time."""

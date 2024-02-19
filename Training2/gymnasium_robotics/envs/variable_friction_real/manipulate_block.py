@@ -3,7 +3,7 @@ import os
 import numpy as np
 from gymnasium.utils.ezpickle import EzPickle
 
-from gymnasium_robotics.envs.variable_friction_friction import (
+from gymnasium_robotics.envs.variable_friction_continuous import (
     MujocoManipulateEnv,
 )
 

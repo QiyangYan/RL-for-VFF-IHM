@@ -148,6 +148,7 @@ def get_base_manipulate_env(HandEnvClass: MujocoHandEnv):
             self.slip_error_angle = None
             self.reward_history = []
             self.pick_up_height = 0
+            # self.pick_up_height = 3
             self.reset_everything = True
             self.goal_radi = np.zeros(2)
 
@@ -179,10 +180,10 @@ def get_base_manipulate_env(HandEnvClass: MujocoHandEnv):
                 d_pos = self._goal_distance(achieved_goal[:7], desired_goal[:7])
                 success_pos = (d_pos < self.d_threshold).astype(np.float32)
             else:
-                assert len(achieved_goal) == 2 and len(
+                assert len(achieved_goal) == 6 and len(
                     desired_goal) == 9, f"Achieved goal has a length of {len(achieved_goal)}, " \
                                         f"but desired goal has a length of {len(desired_goal)}"
-                d_radi = abs(achieved_goal - desired_goal[7:])
+                d_radi = abs(achieved_goal[:2] - desired_goal[7:])
                 d_pos = 0
                 success_pos = 1
             success_radi = (np.mean(abs(d_radi)) < self.r_threshold).astype(np.float32)
@@ -286,6 +287,8 @@ def get_base_manipulate_env(HandEnvClass: MujocoHandEnv):
                     pass
                 elif (not self.terminate_r_limit[0] < radius_l < self.terminate_r_limit[1]) or (not self.terminate_r_limit[0] < radius_r < self.terminate_r_limit[1]):
                     penalty[idx] = -5
+                elif (not(0.03 < achieved_goal[idx,-2] < 1.65) or not(0.03 < achieved_goal[idx,-4] < 1.65)):
+                    penalty[idx] = -5
             return penalty
 
 
@@ -299,10 +302,10 @@ def get_base_manipulate_env(HandEnvClass: MujocoHandEnv):
                 return success.astype(np.float32) - 1.0
             else:
                 if len(goal) == 9:
-                    success_radi, success_pos, d_radi, d_pos = self._is_success_radi(achieved_goal, goal[7:])
+                    success_radi, success_pos, d_radi, d_pos = self._is_success_radi(achieved_goal[:2], goal[7:])
                 else:
-                    assert goal.shape == (1024, 2), f"The shape of goal is wrong, check: {goal.shape}"
-                    success_radi, success_pos, d_radi, d_pos = self._is_success_radi(achieved_goal, goal)
+                    assert goal.shape == (1024, 6), f"The shape of goal is wrong, check: {goal.shape}"
+                    success_radi, success_pos, d_radi, d_pos = self._is_success_radi(achieved_goal[:,:2], goal[:,:2])
                     penalty = self.add_terminate_penalty(achieved_goal)
                     # print("test")
 
@@ -311,10 +314,11 @@ def get_base_manipulate_env(HandEnvClass: MujocoHandEnv):
                         "RL_inspired_IHM_with_RL_Friction": None,
                         "d_radi_seperate": d_radi * 20,
                         "action_complete": self.check_action_complete(),
-                        "d_radi": d_radi * 20,
+                        "d_radi": np.mean(abs(d_radi)) * 20,
                         "d_pos": d_pos * 20,
                         "pos_control_position": self.data.qpos[self.pos_idx * 2 + 1],
                         "torque_control_position": self.data.qpos[(1-self.pos_idx) * 2 + 1],
+                        "pos_idx": self.pos_idx
                     }
 
                     return reward_dict
@@ -373,7 +377,7 @@ def get_base_manipulate_env(HandEnvClass: MujocoHandEnv):
                 'RL-based IHM'
                 'without support'
                 if self.pick_up_height == 3:
-                    print("pick up height is 3")
+                    # print("pick up height is 3")
                     reward_dict["RL_IHM"] = - np.mean(abs(d_radi)) * 20 - self.slip_error * 20000 - self.slip_error_angle * 20000 + penalty
                 else:
                     'with support'
@@ -441,6 +445,7 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
         self.IHM_start = False
         self.friction_changing = False
         self.friction_state = 0
+        self.rotate_start == False
 
         # if self.last_height is not None:
         #     print("Error of the episode(height & radi): ", abs(self.last_height - self.start_height), abs(self.last_r_diff))
@@ -740,7 +745,8 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
         x = self.np_random.uniform(x_range[0], x_range[1])
         y_range = [-0.24, 1.625*abs(x)-0.315]
         y = self.np_random.uniform(y_range[1],y_range[0])
-        coord = [x, y-0.02, z]
+        # coord = [x, y-0.02, z]
+        coord = [x, np.clip(y-0.02, -0.24, -0.30), z]
         return coord
 
     def _sample_goal(self):
@@ -914,6 +920,19 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
             "desired_goal": self.goal.ravel().copy(),
         }
 
+        achieved_radi_with_robot = np.concatenate(
+            [
+                achieved_goal[-2:],
+                robot_qpos,  # left, leftInsert, right, rightInsert
+            ]
+        )
+
+        desired_radi_with_robot = np.concatenate(
+            [
+                complete_obs["desired_goal"][-2:],
+                robot_qpos,  # left, leftInsert, right, rightInsert
+            ]
+        )
 
         # print("desired goal: ", self.goal[-2:])
 
@@ -921,18 +940,19 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
         new_height = self._utils.get_joint_qpos(self.model, self.data, "joint:object")[2]
         if new_height > self.start_height:
             self.start_height = new_height.copy()
+
         if self.pick_up_height == 3:
             obs = {
                 "observation": complete_obs["observation"].copy(),
-                "achieved_goal": np.concatenate([complete_obs["achieved_goal"][-2:], [current_height]]),
-                "desired_goal": np.concatenate([complete_obs["desired_goal"][-2:], [self.start_height]])
+                "achieved_goal": complete_obs["achieved_goal"][-2:],
+                "desired_goal": complete_obs["desired_goal"][-2:]
             }
         else:
             assert self.pick_up_height == 0
             obs = {
                 "observation": complete_obs["observation"].copy(),
-                "achieved_goal": complete_obs["achieved_goal"][-2:],
-                "desired_goal": complete_obs["desired_goal"][-2:]
+                "achieved_goal": achieved_radi_with_robot.copy(),
+                "desired_goal": desired_radi_with_robot
             }
 
         # 'observation with only radius'
@@ -955,8 +975,9 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
         # }
 
     def compute_terminated(self, achieved_goal, desired_goal, info):
+
         # exceed range
-        if len(achieved_goal) == 2:
+        if len(achieved_goal) == 2 or len(achieved_goal) == 6:
             radius_l, radius_r = achieved_goal[0], achieved_goal[1]
         else:
             assert len(achieved_goal) == 9, "achieved goal should have length of 9"
@@ -979,7 +1000,7 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
             return True
         elif (not self.terminate_r_limit[0] < radius_l < self.terminate_r_limit[1]) or (not self.terminate_r_limit[0] < radius_r < self.terminate_r_limit[1]):
             self.slip_terminate = True
-            print("terminate: out of range", radius_l, radius_r)
+            print("terminate: out of range, check", radius_l, radius_r)
             # print("------------------------------------")
             # print("------------------------------------")
             return True
@@ -1003,6 +1024,10 @@ class MujocoManipulateEnv(get_base_manipulate_env(MujocoHandEnv)):
         elif self._utils.get_joint_qpos(self.model, self.data, "joint:object")[4] > 0.1:
             self.slip_terminate = True
             print("terminate: angle slip with error of (limit - 0.1): ", self._utils.get_joint_qpos(self.model, self.data, "joint:object")[4])
+            return True
+        elif (not(0.03 < self.data.qpos[1] < 1.65) or not(0.03 < self.data.qpos[3] < 1.65)) and self.pick_up == True:
+            self.slip_terminate = True
+            print("terminate: exceed actuator pos limit: ", self.data.qpos[1], self.data.qpos[3])
             return True
         else:
             """All the available environments are currently continuing tasks and non-time dependent. The objective is to reach the goal for an indefinite period of time."""
