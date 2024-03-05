@@ -139,6 +139,7 @@ class MuJoCo_Parameter_Optimisation():
 
         print("time taken for the simulation is: ", t[-1], count)
 
+
         'Save data'
         df = pd.DataFrame({
             't': t,
@@ -150,14 +151,16 @@ class MuJoCo_Parameter_Optimisation():
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         data_filename = f"/Users/qiyangyan/Desktop/FYP/Sim2Real/Model_Dynamics_{timestamp}.csv"
         # df.to_csv(data_filename, index=False)
+        df = pd.read_csv('/Users/qiyangyan/Desktop/FYP/Sim2Real/XM430 Calibration 1/Model_Dynamics_20240202_214110.csv')
 
-        if self.render is False:
-            t = np.array(t)*358.15
+        # if self.render is False:
+        #     t = np.array(t)*358.15
 
         'Plot data'
         fig, axs = plt.subplots(2, 1, figsize=(5, 6))  # 2 rows, 1 column
         # Plot for position on the first subplot
-        axs[0].plot(t, actual_position, label='Actual Position', color='r')
+        axs[0].plot(df["t"], df["Actual Position"], label='Real Position', color='r')
+        axs[0].plot(t, actual_position, label='Sim Position', color='k')
         axs[0].hlines(y=self.MAX_POS[ID], xmin=0, xmax=t[-1], colors='b', linestyles='--', label='min_position',
                       linewidth=1)
         axs[0].hlines(y=self.MIN_POS[ID], xmin=0, xmax=t[-1], colors='b', linestyles='--', label='max_position', linewidth=1)
@@ -178,8 +181,8 @@ class MuJoCo_Parameter_Optimisation():
         image_filename = f'/Users/qiyangyan/Desktop/FYP/Sim2Real/Model_Dynamics_{timestamp}.png'
         # fig.savefig(image_filename)
 
-        print(f"Data saved to {data_filename}")
-        print(f"Image saved to {image_filename}")
+        # print(f"Data saved to {data_filename}")
+        # print(f"Image saved to {image_filename}")
 
         plt.show()
 
@@ -233,8 +236,7 @@ class MuJoCo_Parameter_Optimisation():
         self.env.model.actuator_forcerange = [-forcerange, forcerange]
 
 
-
-calibration = MuJoCo_Parameter_Optimisation(False)
+calibration = MuJoCo_Parameter_Optimisation(True)
 
 
 
@@ -243,7 +245,11 @@ calibration = MuJoCo_Parameter_Optimisation(False)
 
 'TEST 2'
 calibration.adjust_parameter()
-calibration.max_min_position_dynamics(0)
+# calibration.max_min_position_dynamics(0)
 
 'TEST 3'
 # calibration.get_parameters_right_finger()
+
+# env = gym.make("VariableFriction-v3")
+# print(env.unwrapped.dt)
+# print(env.unwrapped.n_steps)
