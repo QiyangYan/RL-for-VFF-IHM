@@ -110,14 +110,14 @@ class MuJoCo_Simulation_executor():
         self.env.unwrapped.model.dof_armature[3] = armature
         self.env.unwrapped.model.dof_frictionloss[3] = frictionloss
 
-        self.env.unwrapped.model.actuator_gear[1][0] = gear
+        # self.env.unwrapped.model.actuator_gear[1][0] = gear
         self.env.unwrapped.model.actuator_gainprm[1][0] = gainprm
         self.env.unwrapped.model.actuator_biasprm[1][1] = -gainprm
 
         # self.env.unwrapped.model.actuator_biastype[1] = biastype
-        self.env.unwrapped.model.actuator_forcerange = [-forcerange, forcerange]
+        # self.env.unwrapped.model.actuator_forcerange = [-forcerange, forcerange]
 
-    def adjust_parameter_left(self, damping=1.084, armature=0.045, frictionloss=0.03, gainprm=21.1, biastype=1, forcerange=1.3, gear=1):
+    def adjust_parameter_left(self, damping=1.084, armature=0.045, frictionloss=0.03, gainprm=21.1, biastype=1, gear=1):
         '''
         Actuator
             :param forcerange: -1.3 ~ 1.3
@@ -133,9 +133,18 @@ class MuJoCo_Simulation_executor():
         self.env.unwrapped.model.dof_armature[1] = armature
         self.env.unwrapped.model.dof_frictionloss[1] = frictionloss
 
-        self.env.unwrapped.model.actuator_gear[0][0] = gear
+        # self.env.unwrapped.model.actuator_gear[0][0] = gear
         self.env.unwrapped.model.actuator_gainprm[0][0] = gainprm
         self.env.unwrapped.model.actuator_biasprm[0][1] = -gainprm
 
         # self.env.unwrapped.model.actuator_biastype[1] = biastype
-        self.env.unwrapped.model.actuator_forcerange = [-forcerange, forcerange]
+        # self.env.unwrapped.model.actuator_forcerange = [-forcerange, forcerange]
+
+    def check_parameter(self):
+        print("Damping: ", self.env.unwrapped.model.dof_damping)
+        print("Armature: ", self.env.unwrapped.model.dof_armature)
+        print("Frictionless: ", self.env.unwrapped.model.dof_frictionloss)
+        print("Gear: ", self.env.unwrapped.model.actuator_gear)
+        print("Gainprm: ", self.env.unwrapped.model.actuator_gainprm)
+        print("Biasprm: ", self.env.unwrapped.model.actuator_biasprm)
+        print("Force Range: ", self.env.unwrapped.model.actuator_forcerange)

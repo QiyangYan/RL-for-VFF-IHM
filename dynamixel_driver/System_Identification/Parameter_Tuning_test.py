@@ -166,12 +166,13 @@ class Parameter_Tuning:
         return np.array(real_time), np.array(position), np.array(velocity)
 
     def objective_function(self, prms):
-        if self.ID == 1:
-            # self.calibration.adjust_parameter_right(damping=prms[0], armature=prms[1], gainprm=prms[2])
-            self.calibration.adjust_parameter_right(damping=prms[0], armature=prms[1], gainprm=prms[2], frictionloss=prms[3])
-        if self.ID == 0:
-            # self.calibration.adjust_parameter_left(damping=prms[0], armature=prms[1], gainprm=prms[2])
-            self.calibration.adjust_parameter_left(damping=prms[0], armature=prms[1], gainprm=prms[2], frictionloss=prms[3])
+        # if self.ID == 1:
+        #     # self.calibration.adjust_parameter_right(damping=prms[0], armature=prms[1], gainprm=prms[2])
+        #     self.calibration.adjust_parameter_right(damping=prms[0], armature=prms[1], gainprm=prms[2], frictionloss=prms[3])
+        # if self.ID == 0:
+        #     # self.calibration.adjust_parameter_left(damping=prms[0], armature=prms[1], gainprm=prms[2])
+        #     self.calibration.adjust_parameter_left(damping=prms[0], armature=prms[1], gainprm=prms[2], frictionloss=prms[3])
+        self.calibration.check_parameter()
 
         self.sim_time, self.sim_pos, self.sim_vel = self.calibration.step_response(self.real_time[-1], ID=self.ID)
         self.sim_time_sin, self.sim_pos_sin, self.sim_vel_sin, self.sim_control_sin = self.calibration.sin_response(self.real_time_sin[-1], ID=self.ID)
@@ -240,3 +241,4 @@ class Parameter_Tuning:
 
 # 调用 basinhopping 函数
 result = Parameter_Tuning()
+

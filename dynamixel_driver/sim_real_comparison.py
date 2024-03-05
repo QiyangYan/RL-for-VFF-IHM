@@ -76,7 +76,7 @@ class SimulationTrajectory():
         return t, history, vel_history, control
 
     def slide_trajectory(self):
-        self.adjust_parameter_left(damping=0, armature=2.32669025, gainprm=4.41389059, forcerange=7.95477761, frictionloss=4.10019415)
+        self.adjust_parameter_left(damping=0, armature=2.32669025, gainprm=4.41389059, frictionloss=4.10019415)
         # pick up
         time.sleep(2)
         env_dict, _ = self.common.pick_up(self.inAir)
@@ -118,7 +118,6 @@ class SimulationTrajectory():
         plt.plot(pos_pos)
         plt.show()
 
-
     def adjust_parameter_right(self, damping=1.084, armature=0.045, frictionloss=0.03, gainprm=21.1, biastype=1, forcerange=1.3, gear=1):
         '''
         Actuator
@@ -139,7 +138,7 @@ class SimulationTrajectory():
         self.env.unwrapped.model.actuator_biasprm[1][1] = -gainprm
 
         # self.env.unwrapped.model.actuator_biastype[1] = biastype
-        self.env.unwrapped.model.actuator_forcerange = [-forcerange, forcerange]
+        # self.env.unwrapped.model.actuator_forcerange = [-forcerange, forcerange]
 
     def adjust_parameter_left(self, damping=1.084, armature=0.045, frictionloss=0.03, gainprm=21.1, biastype=1, forcerange=5, gear=1):
         '''
@@ -162,7 +161,18 @@ class SimulationTrajectory():
         self.env.unwrapped.model.actuator_biasprm[0][1] = -gainprm
 
         # self.env.unwrapped.model.actuator_biastype[1] = biastype
-        self.env.unwrapped.model.actuator_forcerange = [-forcerange, forcerange]
+        # self.env.unwrapped.model.actuator_forcerange = [-forcerange, forcerange]
+
+    def check_parameter(self):
+        print("Damping: ", self.env.unwrapped.model.dof_damping)
+        print("Armature: ", self.env.unwrapped.model.dof_armature)
+        print("Frictionloss: ", self.env.unwrapped.model.dof_frictionloss)
+        print("Gear: ", self.env.unwrapped.model.actuator_gear)
+        print("Gainprm: ", self.env.unwrapped.model.actuator_gainprm)
+        print("Biasprm: ", self.env.unwrapped.model.actuator_biasprm)
+        print("Force Range: ", self.env.unwrapped.model.actuator_forcerange)
+
+
 
 
 if __name__ == "__main__":
