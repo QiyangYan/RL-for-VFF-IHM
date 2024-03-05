@@ -1,0 +1,47 @@
+<mujoco>
+    <body name="stand" pos="0 -0.02 0">
+        <geom type="box" contype="0" pos="0 -0.03 -0.02" size="0.05 0.05 0.15" conaffinity="0" group="2" density="0" rgba="0.5 0.5 0.7 1" mass="1"></geom>
+        <geom type="box" contype="0" pos="0 -0.04 0.023" size="0.04 0.05 0.04" conaffinity="0" group="2" density="0" rgba="2.55 0.80 0 0.8"></geom>
+        <geom type="box" contype="0" pos="0 -0.02 0.023" size="0.02 0.05 0.02" conaffinity="0" group="2" density="0" rgba="2.55 0.80 0 0.8"></geom>
+        <joint name="joint:stand" type="slide" pos="0 0 0" axis="0 0 1" limited="true" range="0 0.1" damping="100" armature="0.0001"></joint>
+        <body name="base_link" pos="0 0 0">
+            <geom type="mesh" contype="0" conaffinity="0" group="0" density="0" rgba="1.07 0.84 1.23 1" mesh="base_link"></geom>
+            
+            <body name="left_finger" pos="0.037012 -0.1645 0.002" quat="0.32517 0.62791 0.32517 -0.62791">
+                <inertial pos="-0.0070962 0.07599 -0.00064418" quat="-0.5 -0.5 0.5 -0.5" mass="0.55" diaginertia="5e-05 5e-05 1e-05"/>
+                <joint name="joint:left" class="xm430" type="hinge" axis="1 0 0" range="0 1.8807"></joint>
+                <geom class="visual" type="mesh" rgba="0.5 0.5 0.7 0.5" mesh="left_finger" ></geom>
+                <geom class="left_finger_box" name="left_finger"></geom>
+                <body name="left_insert" pos="-0.014 0.144 -0.0015">
+                    <inertial pos="0.012 -0.051365 0.011392" quat="0.5 0.5 -0.5 0.5" mass="0.27" diaginertia="2.72798e-05 2.6941e-05 2.15361e-06"/>
+                    <joint name="joint:leftInsert" type="slide" axis="0 0 1" range="-0.0017 0.0017" class="xl320"></joint>
+                    <geom class="left_insert_box" name="left_insert" group="3"></geom>
+                    <geom class="visual" mesh="left_insert" rgba="1.9 1.9 .4 1"></geom>
+                </body>
+            </body>
+            
+            <body name="right_finger" pos="-0.037488 -0.1645 0.002" quat="-0.32517 0.62791 -0.32517 -0.62791">
+                <inertial pos="0.0070962 0.07599 -0.00064418" quat="0.5 0.5 -0.5 0.5" mass="0.55" diaginertia="5e-05 5e-05 1e-05"/>
+                <joint name="joint:right" class="xm430" type="hinge" axis="-1 0 0" range="0 1.8807"></joint>
+                <geom class="visual" type="mesh" rgba="0.5 0.5 0.7 0.5" mesh="right_finger"></geom>
+                <geom class="right_finger_box" name="right_finger"></geom>
+                <body name="right_insert" pos="-0.014 0.144 0.0015">
+                    <inertial pos="0.012 -0.051365 0.02879" quat="0.5 0.5 -0.5 0.5" mass="0.27" diaginertia="2.72798e-05 2.6941e-05 2.15361e-06"/>
+                    <joint name="joint:rightInsert" type="slide" axis="0 0 -1" range="-0.0017 0.0017" class="xl320"></joint>
+                    <geom class="right_insert_box" name="right_insert" group="3"></geom>
+                    <geom class="visual" mesh="right_insert" rgba="1.9 1.9 .4 1"></geom>
+                </body>
+            </body>
+            
+<!--            <body name="right_limit" pos="0.037012 -0.1645 -0.042" quat="0.3536 0.6124 0.3536 -0.6124">-->
+<!--                <joint name="joint:right_limit" type="hinge" pos="0 0 0" axis="1 0 0" limited="true" range="0 2.0944" damping="1"></joint>-->
+<!--                <geom name="right_finger_limit" type="box" size=".02 .19 .001" rgba="1.5 1.5 1.5 1" condim="4" group="0" contype="0" conaffinity="0"></geom>-->
+<!--            </body>-->
+<!--            <body name="left_limit" pos="0.037012 -0.1645 -0.042" quat="0.3536 0.6124 0.3536 -0.6124">-->
+<!--                <joint name="joint:left_limit" type="hinge" pos="0 0 0" axis="1 0 0" limited="true" range="0 2.0944" damping="1"></joint>-->
+<!--                <geom name="left_finger_limit" type="box" size=".02 .19 .001" rgba="1.5 1.5 1.5 1" condim="4" group="0" contype="0" conaffinity="0"></geom>-->
+<!--            </body>-->
+            
+        </body>
+    </body>
+</mujoco>
