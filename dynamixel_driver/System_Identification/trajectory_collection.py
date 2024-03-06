@@ -324,32 +324,38 @@ class TRAJECTORIES(BULK):
         # plt.show()
 
     def model_calibration_fixed_torque(self, ID):
-        self.xm_posControl(ID, self.MIN_POS[0])
+        self.xm_posControl(ID, self.MIN_POS[ID])
         time.sleep(3)
         t = []
         actual_position = []
         actual_vel = []
-        start_t = time.time()
         vel_limit_buf = []
         self.xm_torque_control(ID)
+        start_t = time.time()
         while True:
-            current_pos = \
-            self.packetHandler.read4ByteTxRx(self.portHandler, self.DXL_ID_aray[ID], self.XM['ADDR_PRO_PRESENT_POSITION'])[
-                0]
-            t.append(time.time() - start_t)
-            unsigned_current_vel = self.packetHandler.read4ByteTxRx(self.portHandler, self.DXL_ID_aray[0],
-                                                                    self.XM['ADDR_PRESENT_VELOCITY'])[0]
-            vel_limit = self.packetHandler.read4ByteTxRx(self.portHandler, self.DXL_ID_aray[0],
-                                                         self.XM['ADDR_PROFILE_VELOCITY'])[0]
+            observation = self.get_obs_dynamixel()  # 0.016
+            current_pos = observation[ID * 2]
+            unsigned_current_vel = observation[4 + ID * 2]
             signed_current_vel = np.array(unsigned_current_vel, dtype=np.uint32).astype(np.int32)
+
+            t.append(time.time() - start_t)
             actual_position.append(current_pos)
             actual_vel.append(signed_current_vel)
-            vel_limit_buf.append(vel_limit)
 
-            print(current_pos - self.MAX_POS[0])
-            if abs(current_pos - self.MAX_POS[0]) < 50:
+            if abs(current_pos - self.MAX_POS[ID]) < 50:
                 self.xm_torque_control(ID, 0)
                 break
+
+        'Save data'
+        df = pd.DataFrame({
+            't': t,
+            'Actual Position': actual_position,
+            'Actual Velocity': actual_vel,
+            # 'Velocity Limit': vel_limit_buf
+        })
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        data_filename = f"/Users/qiyangyan/Desktop/FYP/Sim2Real/Model_Dynamics_torque_20_{timestamp}.csv"
+        df.to_csv(data_filename, index=False)
 
         'Plot data'
         fig, axs = plt.subplots(2, 1, figsize=(5, 6))  # 2 rows, 1 column
@@ -366,15 +372,15 @@ class TRAJECTORIES(BULK):
         axs[0].legend()
         # Plot for velocity on the second subplot
         axs[1].plot(t, actual_vel, label='Velocity', color='k')
-        axs[1].plot(t, vel_limit_buf, label='Velocity Limit', color='b', linestyle='--', linewidth=1)
+        # axs[1].plot(t, vel_limit_buf, label='Velocity Limit', color='b', linestyle='--', linewidth=1)
         axs[1].set_title('XM430 Velocity Over Time with Torque = -20')
         axs[1].set_xlabel('Time (s)')
         axs[1].set_ylabel('Velocity')
         axs[1].legend()
         plt.tight_layout()
         plt.show()
-        # image_filename = f'/Users/qiyangyan/Desktop/FYP/Sim2Real/Model_Dynamics_{timestamp}.png'
-        # fig.savefig(image_filename)
+        image_filename = f'/Users/qiyangyan/Desktop/FYP/Sim2Real/Model_Dynamics_torque_20_{timestamp}.png'
+        fig.savefig(image_filename)
 
     def model_calibration_fixed_torque_revert(self, ID):
         self.xm_posControl(ID, self.MAX_POS[0])
@@ -694,6 +700,96 @@ class TRAJECTORIES(BULK):
 
         plt.show()
 
+    def move_random(self, ID):
+        """
+            The adjusted parameters are listed below:
+            * profile_vel = 50
+            * acceleration_time = 5
+        """
+        self.xm_posControl(ID, self.MAX_POS[ID], reset=True)
+        time.sleep(3)
+        goal_position = []
+        actual_position = []
+        actual_vel = []
+        vel_limit_buf = []
+        t = []
+
+        goal_pos_list = [1, 10, 100, 10, 10, 10, 200, 245, 10, 40, 50, 140, 245, 245, 10, 10, 10]
+
+        current_pos = self.MAX_POS[ID]
+        start = time.time()
+        for i, pos in enumerate(goal_pos_list):
+            s = time.time()
+            goal_pos = current_pos + pos * (ID * 2 - 1)
+            goal_pos = np.clip(goal_pos, self.MIN_POS[ID], self.MAX_POS[ID])
+            print(goal_pos)
+            self.xm_posControl(ID, goal_pos, reset=False)  # 0.016
+            while True:
+                if abs(time.time() - s - 0.44) > 0.016:
+                    observation = self.get_obs_dynamixel()  # 0.016
+                    current_pos = observation[ID*2]
+                    unsigned_current_vel = observation[4+ID*2]
+                    signed_current_vel = np.array(unsigned_current_vel, dtype=np.uint32).astype(np.int32)
+
+                    print(goal_pos)
+                    goal_position.append(goal_pos)
+                    actual_position.append(current_pos)
+                    actual_vel.append(signed_current_vel)
+                    t.append(time.time() - start)
+
+                if time.time() - s > 0.44:
+                    # goal_position.append(goal_pos)
+                    # actual_position.append(current_pos)
+                    # actual_vel.append(signed_current_vel)
+                    # t.append(time.time() - start)
+                    break
+
+        'Save data'
+        df = pd.DataFrame({
+            't': t,
+            'Goal Position': goal_position,
+            'Actual Position': actual_position,
+            'Actual Velocity': actual_vel,
+            # 'Velocity Limit': vel_limit_buf
+        })
+        print(goal_position)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        data_filename = f"/Users/qiyangyan/Desktop/FYP/Sim2Real/Model_Dynamics_{timestamp}.csv"
+        df.to_csv(data_filename, index=False)
+
+        'Plot data'
+        fig, axs = plt.subplots(2, 1, figsize=(5, 6))  # 2 rows, 1 column
+        # Plot for position on the first subplot
+        axs[0].plot(t, actual_position, label='Actual Position', color='r')
+        axs[0].plot(t, goal_position, label='Goal Position (Control Signal)', color='b', linestyle='--', linewidth=1)
+        axs[0].hlines(y=self.MAX_POS[ID], xmin=0, xmax=t[-1], colors='b', linestyles='--', label='max_position',
+                      linewidth=1)
+        axs[0].hlines(y=self.MIN_POS[ID], xmin=0, xmax=t[-1], colors='b', linestyles='--', label='min_position',
+                      linewidth=1)
+        axs[0].set_title('XM430 Position Over Time')
+        axs[0].set_xlabel('Time (s)')
+        axs[0].set_ylabel('Position')
+        axs[0].legend()
+
+        # Plot for velocity on the second subplot
+        axs[1].plot(t, actual_vel, label='Velocity', color='k')
+        # axs[1].plot(t, vel_limit_buf, label='Velocity Limit', color='b', linestyle='--', linewidth=1)
+        axs[1].set_title('XM430 Velocity Over Time')
+        axs[1].set_xlabel('Time (s)')
+        axs[1].set_ylabel('Velocity')
+        axs[1].legend()
+        plt.tight_layout()
+        image_filename = f'/Users/qiyangyan/Desktop/FYP/Sim2Real/Model_Dynamics_{timestamp}.png'
+        fig.savefig(image_filename)
+
+        print(f"Data saved to {data_filename}")
+        print(f"Image saved to {image_filename}")
+
+        plt.show()
+
+    def torque(self, ID):
+        pass
+
 
 if __name__ == '__main__':
 
@@ -712,7 +808,7 @@ if __name__ == '__main__':
     # dynamixel_driver.time_taken_for_control_read()
 
     'TEST 2: Measures the dynamic response of the finger to sinusoidal signla'
-    dynamixel_driver.model_calibration_sinusoidal(1)
+    # dynamixel_driver.model_calibration_sinusoidal(1)
     # dynamixel_driver.model_calibration_sinusoidal(0)
     # dynamixel_driver.model_calibration_sinusoidal_vary_f(1)
 
@@ -722,7 +818,7 @@ if __name__ == '__main__':
     # dynamixel_driver.max_min_position_dynamics_negative(0)
 
     'TEST 4: Measure the behaviour of the joints in torque control'
-    # dynamixel_driver.model_calibration_fixed_torque(0)
+    dynamixel_driver.model_calibration_fixed_torque(0)
     # dynamixel_driver.model_calibration_fixed_torque_revert(0)
 
     'TEST 5: Current-based Position control mode'
@@ -738,6 +834,10 @@ if __name__ == '__main__':
 
     'TEST 8: With Object'
     # dynamixel_driver.max_min_position_dynamics_with_obj(0)
+
+    'TEST 9: Move Randomly'
+    ' USE THIS TRAJECTORY FOR JOINT CALIBRATION'
+    # dynamixel_driver.move_random(0)
 
     'Back to init position'
     print("--------------------------------------------------------")
