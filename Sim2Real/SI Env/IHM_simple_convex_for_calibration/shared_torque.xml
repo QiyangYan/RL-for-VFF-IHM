@@ -1,0 +1,75 @@
+<mujoco>
+    <size njmax="500" nconmax="100" nuser_jnt="1" nuser_site="1" nuser_sensor="1" nuser_actuator="5" nstack="600000"></size>
+    
+    <visual>
+        <map fogstart="3" fogend="5" force="0.1"></map>
+        <quality shadowsize="4096"></quality>
+    </visual>
+    
+    <asset>
+        <mesh name="base_link" file="base_link.STL"/>
+        <mesh name="left_finger" file="left_finger.STL"/>
+        <mesh name="left_insert" file="left_insert.STL"/>
+        <mesh name="right_finger" file="right_finger.STL"/>
+        <mesh name="right_insert" file="right_insert.STL"/>
+    </asset>
+    
+    <contact>
+        <exclude body1="base_link" body2="left_finger"></exclude>
+        <exclude body1="base_link" body2="right_finger"></exclude>
+        <exclude body1="left_finger" body2="left_insert"></exclude>
+        <exclude body1="right_finger" body2="right_insert"></exclude>
+    </contact>
+
+    <default>
+        <default class="visual">
+            <geom type="mesh" solref=".004 1" contype="0" conaffinity="0" group="0"></geom>
+        </default>
+        <default class="collision">
+            <geom type="mesh" group="1"></geom>
+            <default class="left_insert_box">
+                <geom mass="0" type="box" pos="0.012 -0.051365 0.0113936" size="0.0121 0.053 0.010375" friction="0.1" solimp="0.95 0.99 0.001" solref="0.004 1" priority="1" rgba="0.9 0.3 0.55 1" contype="1" conaffinity="2"></geom>
+            </default>
+            <default class="right_insert_box">
+                <geom mass="0" type="box" pos="0.012 -0.051365 -0.0113936" size="0.0121 0.053 0.010375" friction="0.1" solimp="0.95 0.99 0.001" solref="0.004 1" priority="1" rgba="0.9 0.3 0.55 1" contype="1" conaffinity="2"></geom>
+            </default>
+            <default class="left_finger_box">
+                <geom type="box" size = "0.016 0.06 0.003" contype="4" conaffinity="2" group="0" density="0" rgba="0.96 0.89 1.07 0.7" solimp="0.95 0.99 0.001" solref="0.00001 1" friction = "1" pos="-0.00218 0.087 0.019" priority="1"></geom>
+            </default>
+            <default class="right_finger_box">
+                <geom type="box" size = "0.016 0.06 0.003" contype="4" conaffinity="2" group="0" density="0" rgba="0.96 0.89 1.07 0.7" solimp="0.95 0.99 0.001" solref="0.00001 1" friction = "1" pos="-0.00218 0.087 -0.019" priority="1"></geom>
+            </default>
+        </default>
+        <default class="xm430">
+            <joint damping="0.70011047" armature="0.05987958" frictionloss="0.08772943"/>
+        </default>
+<!--        <default class="xm430">-->
+<!--            <joint damping="0.9041239" armature="0.42817789" frictionloss="0.12312853"/>-->
+<!--        </default>-->
+        <default class="xl320">
+            <joint damping="100000" armature="0.045" frictionloss="1" stiffness="0"/>
+<!--        springdamper="100 1" damping="10000" armature="0.045" frictionloss="1" stiffness="0"    -->
+        </default>
+    </default>
+  
+    <sensor>
+        <jointpos name="joint:p_left" joint="joint:left"></jointpos>
+        <jointpos name="joint:p_right" joint="joint:right"></jointpos>
+        <jointpos name="joint:p_leftInsert" joint="joint:leftInsert"></jointpos>
+        <jointpos name="joint:p_rightInsert" joint="joint:rightInsert"></jointpos>
+        <jointpos name="joint:p_stand" joint="joint:stand"></jointpos>
+    </sensor>
+  
+    <actuator>
+        <!-- <position name="joint:A_left" joint="joint:left" ctrlrange="0 1.8807" kp="2.44026974" forcerange="-5 5"></position>
+        <motor name="joint:AT_right" joint="joint:right" ctrlrange="0 1"></motor> -->
+        
+        <motor name="joint:A_left" joint="joint:left" ctrlrange="0 1"></motor>
+        <position name="joint:AT_right" joint="joint:right" ctrlrange="0 1.8807" kp="2.44026974" forcerange="-5 5"></position>
+
+        <position name="joint:A_leftInsert" joint="joint:leftInsert" ctrlrange="0 0.34" gear="100" kp="20"></position>
+        <position name="joint:A_rightInsert" joint="joint:rightInsert" ctrlrange="0 0.34" gear="100" kp="20"></position>
+        <position name="joint:A_stand" joint="joint:stand" ctrlrange="0 3" kp="10"></position>
+    </actuator>
+</mujoco>
+

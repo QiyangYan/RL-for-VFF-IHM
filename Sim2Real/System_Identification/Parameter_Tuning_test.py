@@ -43,25 +43,27 @@ class Parameter_Tuning:
         # self.real_record_path_sin = '/Users/qiyangyan/Desktop/FYP/Sim2Real/Model_Dynamics_sinusoidal_20240304_223628.csv'
 
         'LEFT POSITION'
-        # self.ID = 0
-        # self.torque = False
-        # self.lb = [0, 0, -30, 0]
-        # self.ub = [10, 10, 30, 2]
-        # self.initial_prms = [4.99979599, 0.39951026, 12.87708353, 0.03]  # good parameter + stiffer score: 4360
-        # # self.initial_prms = [ 4.99979599,  0.39951026 ,12.87708353 , 0.01966778]  # good parameter score: 4150
-        # # IHM-like trajectory
+        self.ID = 0
+        self.torque = False
+        self.lb = [0, 0, -30, 0]
+        self.ub = [10, 10, 30, 2]
+        # self.initial_prms = [ 8.4147827 ,  0.86120059, 30. ,         0.12481117]
+        self.initial_prms = [4.99979599, 0.39951026, 12.87708353, 0.03]  # good parameter + stiffer score: 4360
+        # self.initial_prms = [ 4.99979599,  0.39951026 ,12.87708353 , 0.01966778]  # good parameter score: 4150
+        # IHM-like trajectory
         # self.real_record_path = '/Users/qiyangyan/Desktop/FYP/Sim2Real/XM430 Calibration IHM-like Trajectory/Model_Dynamics_20240305_181840.csv'
-        # # Step response and Sine
-        # # self.real_record_path = '/Users/qiyangyan/Desktop/FYP/Sim2Real/XM430 Calibration 8 - 0.08s/L_Model_Dynamics_20240304_122832.csv'
-        # # self.real_record_path_sin = '/Users/qiyangyan/Desktop/FYP/Sim2Real/XM430 Calibration 8 - 0.08s/L_Model_Dynamics_sinusoidal_20240304_115947.csv'
+        self.real_record_path = '/Users/qiyangyan/Desktop/FYP/Sim2Real/Model_Dynamics_20240306_203833.csv'
+        # Step response and Sine
+        # self.real_record_path = '/Users/qiyangyan/Desktop/FYP/Sim2Real/XM430 Calibration 8 - 0.08s/L_Model_Dynamics_20240304_122832.csv'
+        # self.real_record_path_sin = '/Users/qiyangyan/Desktop/FYP/Sim2Real/XM430 Calibration 8 - 0.08s/L_Model_Dynamics_sinusoidal_20240304_115947.csv'
 
         'LEFT TORQUE'
-        self.torque = True
-        self.ID = 0
-        self.initial_prms = [0.18494267, 0.02372372, 0.03176467]
-        self.lb = [0, 0, -30]
-        self.ub = [10, 10, 30]
-        self.real_record_path = '/Users/qiyangyan/Desktop/FYP/Sim2Real/XM430 Calibration IHM-like Trajectory/Model_Dynamics_torque_20_20240305_221627.csv'
+        # self.torque = True
+        # self.ID = 0
+        # self.initial_prms = [0.18494267, 0.02372372, 0.03176467]
+        # self.lb = [0, 0, -30]
+        # self.ub = [10, 10, 30]
+        # self.real_record_path = '/Users/qiyangyan/Desktop/FYP/Sim2Real/XM430 Calibration IHM-like Trajectory/Model_Dynamics_torque_20_20240305_221627.csv'
 
         'Other Parameters'
         self.niter = 100
@@ -214,7 +216,7 @@ class Parameter_Tuning:
         # Plot for regular position on the first subplot (top left)
         axs[0].plot(self.real_time, self.real_pos, label='Real Position', color='r')
         if not self.torque:
-            axs[0].plot(self.sim_time, self.sim_control, label='Goal Position', color='k', linestyle="--")
+            axs[0].plot(self.sim_time, self.sim_control, label='Sim Control', color='k', linestyle="--")
             axs[0].plot(self.real_time, self.real_ctrl, label='Real Control', color='b', linestyle='--')
         axs[0].plot(self.sim_time, self.sim_pos, label='Simulated Position', color='g')
         axs[0].set_title('XM430 Regular Position Over Time')

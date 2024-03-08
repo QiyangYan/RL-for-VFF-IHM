@@ -7,19 +7,14 @@ from datetime import datetime
 from dynamixel_driver.angle_conversion import AngleConversion
 from scipy.interpolate import interp1d
 from dynamixel_driver.dynamixel_control import Dynamixel_Driver
-
 AngleConvert = AngleConversion()
 
+
 class MuJoCo_Simulation_executor():
-    def __init__(self, render):
+    def __init__(self, env_):
         self.MAX_POS = [2651, 1445]  # left, right [127.002, 232.998]
         self.MIN_POS = [1425, 2671]  # [234.756, 125.244]
-        if render is True:
-            self.env = gym.make("VariableFriction-v3", render_mode="human")
-        else:
-            assert render is False, f"render is not bool: {render}"
-            self.env = gym.make("VariableFriction-v3")
-        self.render = render
+        self.env = env_
         self.env.reset()
         time_duration = 3  # Total time of simulation in seconds
         sample_rate = 110  # How many samples per second
@@ -27,28 +22,6 @@ class MuJoCo_Simulation_executor():
         freq = 0.5
         self.sine_wave = np.array([-np.cos(2 * np.pi * freq * t[i]) for i in range(len(t))])
         self.control_sine = (self.sine_wave + 1) * (1.8807 / 2)
-
-    # def step_response(self,real_time):
-    #     T = round(round(real_time/self.env.unwrapped.dt)+5)
-    #     obs,info = self.env.reset()
-    #     action = [0, 0, 0, 0]
-    #     history = [AngleConvert.rad_2_xm(obs["observation"][18])]
-    #     t=[self.env.unwrapped.n_steps*self.env.unwrapped.dt]
-    #     # for i in range(5):
-    #     #     obs, _, _, _, _ = self.env.step(action)
-    #
-    #     for i in range(T-1):
-    #         # print(i)
-    #         if i == 1:
-    #             action = [0, 0, 0, 1]
-    #         obs, _, _, _, _ = self.env.step(action)
-    #         robot_joint_pos_calib = obs["observation"][18:24]
-    #
-    #         current_pos = robot_joint_pos_calib[0]
-    #         t.append(self.env.unwrapped.n_steps*self.env.unwrapped.dt)
-    #         history.append(AngleConvert.rad_2_xm(current_pos))
-    #         # print(AngleConvert.rad_2_xm(current_pos), current_pos)
-    #     return t, history
 
     def step_response(self, real_time, ID=1):
         T = round(round(real_time/self.env.unwrapped.dt)+5)
@@ -96,10 +69,17 @@ class MuJoCo_Simulation_executor():
 
         return t, history, vel_history, control
 
-    def manual_policy(self, real_time, ID=1):
+    def manual_policy(self, real_time_, ID=1):
+        """
+        Move single actuator from max to min with multiple control signal
+
+        :param real_time_:
+        :param ID:
+        :return:
+        """
         # T = round(round(real_time / self.env.dt) + 5)
         obs, info = self.env.reset()
-        start_pos = AngleConvert.xm_2_rad(self.MAX_POS[ID])
+        start_pos = AngleConvert.xm_2_rad(self.MAX_POS[ID]-self.MIN_POS[ID])
         min = AngleConvert.xm_2_rad(self.MIN_POS[ID])
         history = []
         vel_history = []
@@ -117,6 +97,7 @@ class MuJoCo_Simulation_executor():
             obs, _, _, _, _ = self.env.step(1.8807)
 
         goal_pos_list_dyn = [1, 10, 100, 10, 10, 10, 200, 245, 10, 40, 50, 140, 245, 245, 10, 10, 10]
+        # goal_pos_list_dyn = [245, 200, 245, 200, 245]
         goal_pos_list = []
         for pos in goal_pos_list_dyn:
             goal_pos_list.append(AngleConvert.xm_2_rad(pos))
@@ -126,18 +107,20 @@ class MuJoCo_Simulation_executor():
         for i, pos in enumerate(goal_pos_list):
             # t_1 = (i + 1) * self.env.unwrapped.dt
             goal_pos = np.clip(current_pos + pos * (ID * 2 - 1), 0, 1.8807)
+            # print(current_pos + pos * (ID * 2 - 1), current_pos, pos)
             for _ in range(11):
                 step += 1
                 t1 = (step + 1) * self.env.unwrapped.dt
-                if t1 > real_time:
-                    break
+                # if t1 > real_time:
+                #     break
                 obs, _, _, _, _ = self.env.step(goal_pos)
                 current_pos = obs["observation"][ID * 2]
                 t.append(t1)
                 control.append(AngleConvert.rad_2_xm(min + goal_pos))
+                # print(control[-1])
                 history.append(AngleConvert.rad_2_xm(min + current_pos))
                 vel_history.append(AngleConvert.xm_rad_per_sec_to_rpm(-obs["observation"][ID * 2 + 4] * (ID * 2 - 1)))
-            if t1 > real_time:
+            if t1 > real_time_:
                 break
 
         return t, history, vel_history, control
@@ -183,16 +166,17 @@ class MuJoCo_Simulation_executor():
         # self.env.unwrapped.model.actuator_forcerange = [-forcerange, forcerange]
 
     def adjust_parameter_left(self, damping=1.084, armature=0.045, frictionloss=0.03, gainprm=21.1, biastype=1, gear=1, torque=False):
-        '''
-        Actuator
-            :param forcerange: -1.3 ~ 1.3
-            :param kp:
+        """
 
-        Joint
-            :param damping:
-            :param armature: increase
-            :param frictionloss:
-        '''
+        :param damping:
+        :param armature:
+        :param frictionloss:
+        :param gainprm:
+        :param biastype:
+        :param gear:
+        :param torque:
+        :return:
+        """
 
         self.env.unwrapped.model.dof_damping[1] = damping
         self.env.unwrapped.model.dof_armature[1] = armature
@@ -215,52 +199,75 @@ class MuJoCo_Simulation_executor():
         print("Biasprm: ", self.env.unwrapped.model.actuator_biasprm)
         print("Force Range: ", self.env.unwrapped.model.actuator_forcerange)
 
+    def check_parameter_left(self):
+        print("Damping: ", self.env.unwrapped.model.dof_damping[1])
+        print("Armature: ", self.env.unwrapped.model.dof_armature[1])
+        print("Frictionless: ", self.env.unwrapped.model.dof_frictionloss[1])
+        print("Gainprm: ", self.env.unwrapped.model.actuator_gainprm[0][0])
+        print("Biasprm: ", self.env.unwrapped.model.actuator_biasprm[0][0])
+        print("Force Range: ", self.env.unwrapped.model.actuator_forcerange)
+
+    def plot(self, goal_position, actual_position, actual_vel, ID, t):
+        'Save data'
+        df = pd.DataFrame({
+            't': t,
+            # 'Goal Position': goal_position,
+            'Actual Position': actual_position,
+            'Actual Velocity': actual_vel,
+            # 'Velocity Limit': vel_limit_buf
+        })
+        # print(goal_position)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        data_filename = f"/Users/qiyangyan/Desktop/FYP/Sim2Real/Model_Dynamics_{timestamp}.csv"
+        # df.to_csv(data_filename, index=False)
+
+        'Plot data'
+        fig, axs = plt.subplots(2, 1, figsize=(5, 6))  # 2 rows, 1 column
+        # Plot for position on the first subplot
+        axs[0].plot(t, actual_position, label='Actual Position', color='r')
+        axs[0].plot(t, goal_position, label='Goal Position (Control Signal)', color='b', linestyle='--', linewidth=1)
+        axs[0].hlines(y=sim.MAX_POS[ID], xmin=0, xmax=t[-1], colors='b', linestyles='--', label='max_position',
+                      linewidth=1)
+        axs[0].hlines(y=sim.MIN_POS[ID], xmin=0, xmax=t[-1], colors='b', linestyles='--', label='min_position',
+                      linewidth=1)
+        axs[0].set_title('XM430 Position Over Time')
+        axs[0].set_xlabel('Time (s)')
+        axs[0].set_ylabel('Position')
+        axs[0].legend()
+
+        # Plot for velocity on the second subplot
+        axs[1].plot(t, actual_vel, label='Velocity', color='k')
+        # axs[1].plot(t, vel_limit_buf, label='Velocity Limit', color='b', linestyle='--', linewidth=1)
+        axs[1].set_title('XM430 Velocity Over Time')
+        axs[1].set_xlabel('Time (s)')
+        axs[1].set_ylabel('Velocity')
+        axs[1].legend()
+        plt.tight_layout()
+        image_filename = f'/Users/qiyangyan/Desktop/FYP/Sim2Real/Model_Dynamics_{timestamp}.png'
+        # fig.savefig(image_filename)
+
+        print(f"Data saved to {data_filename}")
+        print(f"Image saved to {image_filename}")
+
+        plt.show()
+
 
 if __name__ == "__main__":
-    sim = MuJoCo_Simulation_executor(True)
-    t, actual_position, actual_vel, goal_position = sim.manual_policy(100, 0)
+    real_record_path = '/Users/qiyangyan/Desktop/FYP/Sim2Real/XM430 Calibration IHM-like Trajectory/Model_Dynamics_20240305_181840.csv'
+    df = pd.read_csv(real_record_path)
+    real_position = np.array(df['Actual Position'])
+    real_time = np.array(df['t'])
+    real_velocity = np.array(df['Actual Velocity'])
+
+    render = True
+    if render is True:
+        env = gym.make("VariableFriction-v3", render_mode="human")
+    else:
+        assert render is False, f"render is not bool: {render}"
+        env = gym.make("VariableFriction-v3")
+
+    ID_ = 0
+    sim = MuJoCo_Simulation_executor(False)
     # t, actual_position, actual_vel = sim.torque(2, 0)
-    ID = 0
-
-    'Save data'
-    df = pd.DataFrame({
-        't': t,
-        # 'Goal Position': goal_position,
-        'Actual Position': actual_position,
-        'Actual Velocity': actual_vel,
-        # 'Velocity Limit': vel_limit_buf
-    })
-    # print(goal_position)
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    data_filename = f"/Users/qiyangyan/Desktop/FYP/Sim2Real/Model_Dynamics_{timestamp}.csv"
-    # df.to_csv(data_filename, index=False)
-
-    'Plot data'
-    fig, axs = plt.subplots(2, 1, figsize=(5, 6))  # 2 rows, 1 column
-    # Plot for position on the first subplot
-    axs[0].plot(t, actual_position, label='Actual Position', color='r')
-    # axs[0].plot(t, goal_position, label='Goal Position (Control Signal)', color='b', linestyle='--', linewidth=1)
-    axs[0].hlines(y=sim.MAX_POS[ID], xmin=0, xmax=t[-1], colors='b', linestyles='--', label='max_position',
-                  linewidth=1)
-    axs[0].hlines(y=sim.MIN_POS[ID], xmin=0, xmax=t[-1], colors='b', linestyles='--', label='min_position',
-                  linewidth=1)
-    axs[0].set_title('XM430 Position Over Time')
-    axs[0].set_xlabel('Time (s)')
-    axs[0].set_ylabel('Position')
-    axs[0].legend()
-
-    # Plot for velocity on the second subplot
-    axs[1].plot(t, actual_vel, label='Velocity', color='k')
-    # axs[1].plot(t, vel_limit_buf, label='Velocity Limit', color='b', linestyle='--', linewidth=1)
-    axs[1].set_title('XM430 Velocity Over Time')
-    axs[1].set_xlabel('Time (s)')
-    axs[1].set_ylabel('Velocity')
-    axs[1].legend()
-    plt.tight_layout()
-    image_filename = f'/Users/qiyangyan/Desktop/FYP/Sim2Real/Model_Dynamics_{timestamp}.png'
-    # fig.savefig(image_filename)
-
-    print(f"Data saved to {data_filename}")
-    print(f"Image saved to {image_filename}")
-
-    plt.show()
+    # t_, sim_present_position_, sim_present_vel_, sim_goal_position_ = sim.manual_policy(real_time[-1], ID_)
+    # sim.plot(sim_goal_position_, sim_present_position_, sim_present_vel_, ID_, t_)

@@ -17,3 +17,8 @@ class AngleConversion():
     @staticmethod
     def xm_rad_per_sec_to_rpm(velocity_rad_per_sec):
         return velocity_rad_per_sec * (60 / (2 * np.pi)) / 0.229
+
+    @staticmethod
+    def xm_2_policy(pos):
+        policy_action = (pos / 1226) * 2 - 1
+        return np.clip(policy_action, -1, 1)

@@ -48,7 +48,7 @@ class Parameter_Tuning:
         self.torque = False
         self.initial_prms = [0, 0, 0, 0]
         self.lb = [0, 0, 0, 0]
-        self.ub = [10, 10, 30, 1]
+        self.ub = [5, 10, 30, 1]
         # IHM-like trajectory
         self.real_record_path = '/Users/qiyangyan/Desktop/FYP/Sim2Real/XM430 Calibration IHM-like Trajectory/Model_Dynamics_20240305_181840.csv'
         # Step Response & Sine
