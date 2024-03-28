@@ -1,14 +1,31 @@
 import os
 import numpy as np
 import cv2
+from datetime import datetime
 
 # Configuration parameters
 ARUCO_DICT = cv2.aruco.DICT_4X4_250
-SQUARES_VERTICALLY = 14
-SQUARES_HORIZONTALLY = 10
+
+# PATH_TO_YOUR_IMAGES = '/Users/qiyangyan/Desktop/FYP/Vision/CameraCalibration/images_random_pose'
+# SQUARES_VERTICALLY = 14
+# SQUARES_HORIZONTALLY = 10
+# SQUARE_LENGTH = 0.019  # meters
+# MARKER_LENGTH = 0.0145  # meters
+
+PATH_TO_YOUR_IMAGES = '/Users/qiyangyan/Desktop/FYP/Vision/CameraCalibration/images_object_height'
+SQUARES_VERTICALLY = 6
+SQUARES_HORIZONTALLY = 8
 SQUARE_LENGTH = 0.019  # meters
 MARKER_LENGTH = 0.0145  # meters
-PATH_TO_YOUR_IMAGES = '/Users/qiyangyan/Desktop/FYP/Vision/CameraCalibration/images'
+
+
+# PATH_TO_YOUR_IMAGES = '/Users/qiyangyan/Desktop/FYP/Vision/CameraCalibration/images_object_height_A4'
+# SQUARES_VERTICALLY = 14
+# SQUARES_HORIZONTALLY = 10
+# SQUARE_LENGTH = 0.019  # meters
+# MARKER_LENGTH = 0.0145  # meters
+
+# PATH_TO_YOUR_IMAGES = '/Users/qiyangyan/Desktop/FYP/Vision/CameraCalibration/images_object_height_small'
 
 
 def calibrate_and_save_parameters():
@@ -63,20 +80,24 @@ def calibrate_and_save_parameters():
         return
 
     # Save calibration data
-    np.save('camera_matrix.npy', camera_matrix)
-    np.save('dist_coeffs.npy', dist_coeffs)
+    print(camera_matrix)
+    print(dist_coeffs)
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    np.save(f'camera_matrix_{timestamp}.npy', camera_matrix)
+    np.save(f'dist_coeffs_{timestamp}.npy', dist_coeffs)
     print("Calibration successful. Parameters saved.")
 
     # Optionally: show undistorted images
     for image_path in images_used:
         image = cv2.imread(image_path)
         undistorted_image = cv2.undistort(image, camera_matrix, dist_coeffs, None)
-        cv2.imshow('Undistorted Image', undistorted_image)
+        # cv2.imshow('Undistorted Image', undistorted_image)
         cv2.waitKey(500)  # Display each for 500ms
 
     cv2.destroyAllWindows()
 
 
-print("Starting calibration...")
-calibrate_and_save_parameters()
-print("Calibration process complete.")
+if __name__ == "__main__":
+    print("Starting calibration...")
+    calibrate_and_save_parameters()
+    print("Calibration process complete.")
