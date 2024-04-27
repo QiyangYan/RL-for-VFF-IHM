@@ -510,7 +510,7 @@ class ARUCO:
             if self.total_frames == 0:
                 return True
             ''' --------------------------- Key part --------------------------- '''
-            frame, _, _, _, _, _ = self.pose_estimation(display, object_size, 3)
+            frame, _, _, _, _ = self.pose_estimation(display, object_size, 3)
             ''' --------------------------------------------------------------- '''
 
             # Display the frame
@@ -519,9 +519,10 @@ class ARUCO:
                 cv2.resizeWindow('Frame', 640, 480)
                 cv2.imshow('Frame', self.frame)
 
+        # print(np.shape(self.filter_poses), type(self.filter_poses_base))
         for i in range(6):
             self.mean_std_list.append(self.get_mean_std(np.array(self.filter_poses)[:, i]))
-            self.mean_std_list_base.append(self.get_mean_std(np.array(self.filter_poses_base[:, i])))
+            self.mean_std_list_base.append(self.get_mean_std(np.array(self.filter_poses_base)[:, i]))
 
         if show_plot:
             self.plot_track(self.poses, self.filter_poses)

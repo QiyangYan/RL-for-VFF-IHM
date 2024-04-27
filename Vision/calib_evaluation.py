@@ -118,7 +118,7 @@ class CalibrationEvaluation(ARUCO):
         plt.figure(figsize=(6, 6))
         plt.scatter(x, y, marker='o', label='Path')
         plt.scatter(expected_positions[:, 0], expected_positions[:, 1], marker='o', color='r')
-        plt.scatter(base_poses[:, 0], base_poses[:, 1], marker='o', color='r')
+        plt.scatter(np.array(base_poses)[:, 0], np.array(base_poses)[:, 1], marker='o', color='r')
         plt.xlabel('X Coordinate (cm)')
         plt.ylabel('Y Coordinate (cm)')
         plt.title('Path of the Marker')
