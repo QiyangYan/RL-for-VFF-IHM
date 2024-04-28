@@ -214,7 +214,8 @@ class TrainEvaluateAgent(EnvironmentSetup):
         slide_success_real = 0
         if reset:
             if not real:
-                reward_dict = self.action_functions.pick_up(inAir)
+                env_dict, reward_dict = self.action_functions.pick_up(inAir)
+                state, achieved_goal, desired_goal = self.extract_env_info(env_dict)
             else:
                 # reward_dict = self.action_functions.pick_up(inAir)
                 env_dict = self.real_env.pick_up_real(inAir)
@@ -549,13 +550,14 @@ class TrainEvaluateAgent(EnvironmentSetup):
                     reset = False
             else:
                 reset = True
-            episode_dict, success, episode_reward, slide_result, friction_change_times, success = self.run_episode(train_mode=False,
-                                                                    randomisation=randomise,
-                                                                    withRotation=withRotation,
-                                                                    withPause=withPause,
-                                                                    real=real,
-                                                                    display=display,
-                                                                    reset=reset)
+            episode_dict, success, episode_reward, slide_result, friction_change_times \
+                = self.run_episode(train_mode=False,
+                                   randomisation=randomise,
+                                   withRotation=withRotation,
+                                   withPause=withPause,
+                                   real=real,
+                                   display=display,
+                                   reset=reset)
             # print(f"episode_reward:{episode_reward:3.3f}")
             if not real:
                 if success[-1]:
@@ -655,11 +657,21 @@ class TrainEvaluateAgent(EnvironmentSetup):
 
 if __name__ == "__main__":
     env_name = "VariableFriction-v5"
-    real_ = True
+    real_ = False
     display_ = False
-    keep_reset_ = False
-    trainer_evaluator = TrainEvaluateAgent(env_name, render=True, real=real_, display=display_)
-    trainer_evaluator.play(20, randomise=False, withRotation=True, withPause=False, real=real_, display=display_, keep_reset=keep_reset_, store=True)
+    keep_reset_ = True
+    trainer_evaluator = TrainEvaluateAgent(env_name,
+                                           render=True,
+                                           real=real_,
+                                           display=display_)
+    trainer_evaluator.play(20,
+                           randomise=False,
+                           withRotation=True,
+                           withPause=False,
+                           real=real_,
+                           display=display_,
+                           keep_reset=keep_reset_,
+                           store=True)
 
     # while True:
     #     trainer_evaluator.reset_environment()
