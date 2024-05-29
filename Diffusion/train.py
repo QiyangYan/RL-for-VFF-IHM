@@ -510,9 +510,11 @@ if __name__ == "__main__":
     elif args.training_selection == 20:
         print("Load model_20, actor_10000")
         agent.load_model('models_20_1024', 10000)  #  if load trained model
-    # elif args.training_selection == 21:
-    #     print("Load model_21, actor_10000")
-    #     agent.load_model('models_21_1024', 10000)  #  if load trained model
+    elif args.training_selection == 21:
+        print("Load model_21, actor_10000")
+        agent.load_model('models_21_1024', 10000)  #  if load trained model
+    elif args.training_selection == 28:
+        agent.load_model('models_28_1024', 20000)
 
     max_timesteps = args.num_epochs * args.num_steps_per_epoch
     while (training_iters < max_timesteps):

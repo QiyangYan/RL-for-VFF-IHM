@@ -68,7 +68,7 @@ class Diffusion_QL(object):
         self.state_normalizer = Normalizer(state_dim, default_clip_range=5)
         # self.goal_normalizer = Normalizer(self.n_goals, default_clip_range=5)
 
-        checkpoint = torch.load('/rds/general/user/qy320/home/diffusion/VariableFriction_3_24.pth')
+        checkpoint = torch.load('./VariableFriction_3_24.pth')
         state_normalizer_mean = checkpoint["state_normalizer_mean"]
         self.state_normalizer.mean = state_normalizer_mean
         state_normalizer_std = checkpoint["state_normalizer_std"]
