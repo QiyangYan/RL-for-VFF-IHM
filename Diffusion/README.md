@@ -1,4 +1,5 @@
 Training:
 
-1. python3 -u train.py --training_selection 24 --layer_dim 1024 --num_epochs 20000
-2. python3 -u train.py --training_selection 21 --layer_dim 1024 --batch_size 1024 --num_epochs 20000
+1. python3 -u train.py --training_selection 33 --layer_dim 2048 --num_epochs 30000 --batch_size 1024
+2. python3 -u train.py --training_selection 34 --layer_dim 2048 --num_epochs 30000 --batch_size 1024
+3. python3 -u train.py --training_selection 35 --layer_dim 2048 --num_epochs 30000 --batch_size 1024
