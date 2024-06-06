@@ -698,7 +698,7 @@ if __name__ == "__main__":
     
 
     else:
-        assert args.training_selection == 37, f"Wrong training index {args.training_selection}"
+        assert args.training_selection == 38, f"Wrong training index {args.training_selection}"
         # Others
         # Training a slide action that takes mid goal as desired goal
 
