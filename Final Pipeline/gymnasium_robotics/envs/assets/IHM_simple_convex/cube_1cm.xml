@@ -1,0 +1,33 @@
+<mujoco>
+    <body name="object" pos="0 -0.27 0">
+        <joint name="joint:object" type="free" damping="0.01"></joint>
+        <geom name="object" type="box" size =".01 .01 .025" rgba="1.5 1.5 1.5 1" condim="4" contype="6" conaffinity="5" friction="1" mass="0.02" group="1" pos="0 0 0"></geom>
+        <site name="object:center" pos="0 0 0" rgba="1 0 0 0" size="0.005 0.005 0.005" group="1"></site>
+        <site name="object:corner1" pos="0.01 0.01 0.025" rgba="1 1 1 1" size="0.001 0.001 0.001" group="1"></site>
+        <site name="object:corner2" pos="0.01 -0.01 0.025" rgba="1 1 0 0" size="0.001 0.001 0.001" group="1"></site>
+        <site name="object:corner3" pos="-0.01 -0.01 0.025" rgba="1 0 0 0" size="0.001 0.001 0.001" group="1"></site>
+        <site name="object:corner4" pos="-0.01 0.01 0.025" rgba="0 1 0 0" size="0.001 0.001 0.001" group="1"></site>
+        <body name="arrow_marker" pos="0 0 0.001">
+            <geom name="object:center1" type="cylinder" pos="0 0 0.001" size="0.002 .025" contype="0" conaffinity="0" rgba="0.25 0.22 0.22 1" group="1"></geom>
+            <geom name="arrow" type="box" size =".001 .008 .025" rgba="0.5 0.5 0.7 1" contype="0" conaffinity="0" group="1"></geom>
+            <geom name="arrow2" type="box" pos="-0.0034 -0.006 0" quat="1 0 0 0.5" size=".001 .005 .025" rgba="0.5 0.5 0.7 1" contype="0" conaffinity="0" group="1"></geom>
+            <geom name="arrow3" type="box" pos="0.0034 -0.006 0" quat="1 0 0 -0.5" size=".001 .005 .025" rgba="0.5 0.5 0.7 1" contype="0" conaffinity="0" group="1"></geom>
+        </body>
+    </body>
+
+    <body name="target" pos="0 -0.251365 0">
+        <joint name="joint:target" type="free" damping="0.01"></joint>
+        <geom name="target" type="box" size=".01 .01 .025" rgba="1.5 1.5 1.5 0.2" group="1" condim="4" contype="0" conaffinity="0" pos="0 0 0"></geom>
+        <site name="target:center" pos="0 0 0" rgba="1 0 0 0" size="0.005 0.005 0.005" group="1"></site>
+        <site name="target:corner1" pos="0.01 0.01 0.025" rgba="1 1 1 0" size="0.001 0.001 0.001" group="1"></site>
+        <site name="target:corner2" pos="0.01 -0.01 0.025" rgba="1 1 0 0" size="0.001 0.001 0.001" group="1"></site>
+        <site name="target:corner3" pos="-0.01 -0.01 0.025" rgba="1 0 0 0" size="0.001 0.001 0.001" group="1"></site>
+        <site name="target:corner4" pos="-0.01 0.01 0.025" rgba="0 1 0 0" size="0.001 0.001 0.001" group="1"></site>
+        <body name="target_arrow_marker" pos="0 0 0.001">
+            <geom name="target:center1" type="cylinder" pos="0 0 0.001" size="0.002 .025" contype="0" conaffinity="0" rgba="0.25 0.22 0.22 1" group="1"></geom>
+            <geom name="target_arrow" type="box" size =".001 .008 .025" rgba="1 0 0 1" contype="0" conaffinity="0" group="1"></geom>
+            <geom name="target_arrow2" type="box" pos="-0.0034 -0.006 0" quat="1 0 0 0.5" size=".001 .005 .025" rgba="1 0 0 1" contype="0" conaffinity="0" group="1"></geom>
+            <geom name="target_arrow3" type="box" pos="0.0034 -0.006 0" quat="1 0 0 -0.5" size=".001 .005 .025" rgba="1 0 0 1" contype="0" conaffinity="0" group="1"></geom>
+        </body>
+    </body>
+</mujoco>

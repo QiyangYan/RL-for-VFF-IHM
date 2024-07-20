@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mujoco>
+    
+    <compiler angle="radian"
+        meshdir="/Users/qiyangyan/Desktop/IHM_finger/IHM_simple_convex_cross_object/simple_assets"
+        balanceinertia="true"
+        discardvisual="false"
+        autolimits="true"></compiler>
+    <option solver="PGS" impratio="0.5" cone="elliptic" tolerance="1e-7" noslip_iterations="10000">
+        <flag warmstart="enable"></flag>
+    </option>
+  
+    <include file="shared.xml"></include>
+    
+    <worldbody>
+        <geom name="floor" type="plane" pos="0 0 -0.5" rgba="0.25 0.22 0.22 1" size="2 2 0.125" friction="0.2" group="2"></geom>
+        <body name="floor" pos="0 0 -0.5"></body>
+        <geom name="table" type="box" size=".2 .2 0.25" pos="0 -0.12 -0.275" contype="6" conaffinity="5" group="2" density="0" rgba="0.25 0.22 0.22 1" solimp="0.95 0.99 0.001" solref="0.00001 1" friction = "0.01" priority="1"></geom>
+        <geom name="tableWhite" type="box" size=".21 .21 0.22" pos="0 -0.12 -0.25" rgba="1.5 1.5 1.5 0.9" group="2"></geom>
+        <geom name="case" type="box" size="0.1 0.07 0.2" pos="0 -0.02 0.1" contype="0" conaffinity="0" group="2" density="0" rgba="2.56 2.56 2.56 0.5" mass="1"></geom>
+        
+        <include file="gripper.xml"></include>
+        
+<!--        <include file="object.xml"></include>-->
+
+        <include file="octagon.xml"></include>
+
+<!--        <body name="Super_Monkey-P" pos="0.02 -0.27 -0.025" quat="0 0 0.7071068 0.7071068">-->
+<!--          <joint name="joint:target" type="free" damping="0.01"></joint>-->
+<!--          <geom mesh="Super_Monkey-P" class="visual"/>-->
+<!--          <geom mesh="Super_Monkey-P_collision_0" rgba="0.0751948124085261 0.2929354138485666 0.9816105287693856 1" class="collision" friction="1" mass="0.02" condim="4" contype="6" conaffinity="5" solref="1e-6" solimp="1e4 1e4 1e4"/>-->
+<!--        </body>-->
+        
+        <light directional="true" diffuse="0.3 0.3 0.3" specular="0.3 0.3 0.3" castshadow="true" pos="0.1 0.1 0.1" dir="0.2 0.1 -0.1" ></light>
+    </worldbody>
+</mujoco>

@@ -1,0 +1,90 @@
+<mujoco>
+    <size njmax="500" nconmax="100" nuser_jnt="1" nuser_site="1" nuser_sensor="1" nuser_actuator="5" nstack="600000"></size>
+    
+    <visual>
+        <map fogstart="3" fogend="5" force="0.1"></map>
+        <quality shadowsize="4096"></quality>
+    </visual>
+    
+    <asset>
+        <mesh name="base_link" file="base_link.STL"/>
+        <mesh name="left_finger" file="left_finger.STL"/>
+        <mesh name="left_insert" file="left_insert.STL"/>
+        <mesh name="right_finger" file="right_finger.STL"/>
+        <mesh name="right_insert" file="right_insert.STL"/>
+        <mesh file="Super_Monkey-P.obj" scale="0.001 0.001 0.001"/>
+        <mesh file="Super_Monkey-P_collision_0.obj" scale="0.001 0.001 0.001"/>
+        <mesh name="octagon" file="for Roy.STL" scale="0.001 0.001 0.001"/>
+    </asset>
+    
+    <contact>
+        <exclude body1="base_link" body2="left_finger"></exclude>
+        <exclude body1="base_link" body2="right_finger"></exclude>
+        <exclude body1="left_finger" body2="left_insert"></exclude>
+        <exclude body1="right_finger" body2="right_insert"></exclude>
+    </contact>
+
+    <default>
+        <default class="visual">
+            <geom type="mesh" solref=".004 1" contype="0" conaffinity="0" group="0"></geom>
+<!--            <geom group="0" type="mesh" contype="0" conaffinity="0"/>-->
+        </default>
+        <default class="collision">
+<!--            <geom group="" type="mesh"/>-->
+            <geom type="mesh" group="1"></geom>
+            <default class="left_insert_box">
+                <geom mass="0" type="box" pos="0.012 -0.051365 0.0113936" size="0.0121 0.053 0.010375" friction="0.1" solimp="0.95 0.99 0.001" solref="0.004 1" priority="1" rgba="0.9 0.3 0.55 1" contype="1" conaffinity="2"></geom>
+            </default>
+            <default class="right_insert_box">
+                <geom mass="0" type="box" pos="0.012 -0.051365 -0.0113936" size="0.0121 0.053 0.010375" friction="0.1" solimp="0.95 0.99 0.001" solref="0.004 1" priority="1" rgba="0.9 0.3 0.55 1" contype="1" conaffinity="2"></geom>
+            </default>
+            <default class="left_finger_box">
+                <geom type="box" size = "0.016 0.06 0.003" contype="4" conaffinity="2" group="0" density="0" rgba="0.96 0.89 1.07 0.7" solimp="0.95 0.99 0.001" solref="0.00001 1" friction = "1" pos="-0.00218 0.087 0.019" priority="1"></geom>
+            </default>
+            <default class="right_finger_box">
+                <geom type="box" size = "0.016 0.06 0.003" contype="4" conaffinity="2" group="0" density="0" rgba="0.96 0.89 1.07 0.7" solimp="0.95 0.99 0.001" solref="0.00001 1" friction = "1" pos="-0.00218 0.087 -0.019" priority="1"></geom>
+            </default>
+        </default>
+        <default class="xm430Position">
+            <joint damping="4.99979599" armature="0.39951026" frictionloss="0.03"/>
+<!--            <joint damping="8.42506598" armature="1.53619032" frictionloss="0.1425522"/>-->
+<!--            Iter:26, accepted:True, prms:[ 8.42506598  1.53619032 30.          0.1425522 ], loss:42910.40454254485
+Multiple Trajectories-->
+        </default>
+        <default class="xm430Torque">
+            <joint damping="5.67185526e-02" armature="3.55878361e-03" frictionloss="4.86429385e-07"/>
+            <!--minimum loss:     370.75205951925, 0.3 torque-->
+        </default>
+        <default class="xl320">
+            <joint damping="100000" armature="0.045" frictionloss="1" stiffness="0"/>
+<!--        springdamper="100 1" damping="10000" armature="0.045" frictionloss="1" stiffness="0"    -->
+        </default>
+    </default>
+  
+    <sensor>
+        <jointpos name="joint:p_left" joint="joint:left"></jointpos>
+        <jointpos name="joint:p_right" joint="joint:right"></jointpos>
+        <jointpos name="joint:p_leftInsert" joint="joint:leftInsert"></jointpos>
+        <jointpos name="joint:p_rightInsert" joint="joint:rightInsert"></jointpos>
+        <jointpos name="joint:p_stand" joint="joint:stand"></jointpos>
+    </sensor>
+    
+<!--    [9.50167428, 3.9701131, 26.471617, 11.76470498,  0.]-->
+<!--0.65246879, 0.6145034 , 0.87549634, 0.-->
+<!--[ 4.99979599,  0.39951026 ,12.87708353 , 0.01966778]-->
+    
+<!--    Torque: [3.98617919, 0.63838835, 0.]-->
+<!--    Position: [4.99979599, 0.39951026, 12.87708353, 0.03]-->
+    
+    <actuator>
+<!--        <position name="joint:A_left" joint="joint:left" ctrlrange="0 1.8807" kp="12.87708353" forcerange="-5 5" gear="1"></position>-->
+        <position name="joint:A_left" joint="joint:left" ctrlrange="0 1.8807" kp="30" forcerange="-5 5" gear="1"></position>
+        <motor name="joint:AT_right" joint="joint:right" ctrlrange="0 1" forcerange="-5 5"></motor>
+        <position name="joint:A_leftInsert" joint="joint:leftInsert" ctrlrange="0 0.34" gear="100" kp="20"></position>
+        <position name="joint:A_rightInsert" joint="joint:rightInsert" ctrlrange="0 0.34" gear="100" kp="20"></position>
+        <position name="joint:A_stand" joint="joint:stand" ctrlrange="0 3" kp="10"></position>
+<!--        <position name="joint:left_limit" joint="joint:left_limit" ctrlrange="0 1.68" kp="100"></position>-->
+<!--        <position name="joint:right_limit" joint="joint:right_limit" ctrlrange="0 1.68" kp="100"></position>-->
+    </actuator>
+</mujoco>
+

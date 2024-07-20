@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mujoco>
+    
+    <compiler angle="radian"
+        meshdir="./simple_assets"
+        balanceinertia="true"
+        discardvisual="false"
+        autolimits="true"></compiler>
+    <option solver="PGS" impratio="0.5" cone="elliptic" tolerance="1e-7" noslip_iterations="10000">
+        <flag warmstart="enable"></flag>
+    </option>
+<!--    <statistic meansize="0.0771609" extent="0.313767" center="0.00508997 -0.163156 0.013906"/>-->
+  
+    <include file="shared.xml"></include>
+    
+    <worldbody>
+        <geom name="floor" type="plane" pos="0 0 -0.5" rgba="0.25 0.22 0.22 1" size="2 2 0.125" friction="0" group="2"></geom>
+        <body name="floor" pos="0 0 -0.5"></body>
+        <geom name="table" type="box" size=".2 .2 0.25" pos="0 -0.12 -0.275" contype="6" conaffinity="5" group="2" density="0" rgba="0.25 0.22 0.22 1" solimp="0.95 0.99 0.001" solref="0.00001 1" friction = "0.01" priority="1"></geom>
+        <geom name="tableWhite" type="box" size=".21 .21 0.22" pos="0 -0.12 -0.25" rgba="1.5 1.5 1.5 0.9" group="2"></geom>
+        <geom name="case" type="box" size="0.1 0.07 0.2" pos="0 -0.02 0.1" contype="0" conaffinity="0" group="2" density="0" rgba="2.56 2.56 2.56 0.5" mass="1"></geom>
+        
+        <include file="gripper.xml"></include>
+<!--        <include file="cube.xml"></include>-->
+<!--        <include file="cubecylinder.xml"></include>-->
+<!--        <include file="three_cylinder.xml"></include>-->
+<!--        <include file="cube_2cm.xml"></include>-->
+        <include file="cube_1cm.xml"></include>
+<!--        <include file="octagon.xml"></include>-->
+        
+        <light directional="true" diffuse="0.3 0.3 0.3" specular="0.3 0.3 0.3" castshadow="true" pos="0.1 0.1 0.1" dir="0.2 0.1 -0.1" ></light>
+    </worldbody>
+</mujoco>
