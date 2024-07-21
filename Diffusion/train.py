@@ -1694,7 +1694,7 @@ if __name__ == "__main__":
         # + 10k demo
         # + cube2cm
         print(f"Big step only Rotation - network layer dimension: {args.layer_dim}")
-        with open(f'dataset/cube1cm/train_10k_cube_2cm_noObjVel_rotation', 'rb') as f:
+        with open(f'dataset/cube2cm/train_10k_cube_2cm_noObjVel_rotation', 'rb') as f:
             dataset = pickle.load(f)
 
         goal_mean = np.mean(dataset['desired_goals'], axis=0)
