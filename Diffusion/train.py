@@ -12,6 +12,14 @@ def normalize(data, mean, std):
     std = np.where(std == 0, 1, std)
     return (data - mean) / std
 
+def normalize_max_min(data, min, max):
+    # Ensure standard deviation is not zero to avoid division by zero error
+    mask = (max == min)
+    # data_norm = np.where(mask, 0.5, (data - min) / (max - min))
+    data_norm = np.divide(data - min, max - min, where=~mask, out=np.full(data.shape, np.nan))
+    data_norm = np.where(mask, 0.5, data_norm)
+    return data_norm * 2 - 1
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()  
     parser.add_argument('--device', default=0, type=int)                       # device, {"cpu", "cuda", "cuda:0", "cuda:1"}, etc
@@ -210,6 +218,7 @@ if __name__ == "__main__":
 
     elif args.training_selection == 15:
         # Random policy without rotation
+        # obs + action
         print(f"Add last_action into Obs - network layer dimension: {args.layer_dim}")
         with open(f'dataset/VFF-random_withoutRotation_9983demos', 'rb') as f:
             dataset = pickle.load(f)
@@ -247,6 +256,7 @@ if __name__ == "__main__":
 
     elif args.training_selection == 17:
         # Random policy with rotation and action in obs
+        # obs + action
         print(f"Add last_action into Obs with Rotation - network layer dimension: {args.layer_dim}")
         with open(f'dataset/VFF-random_9884demos', 'rb') as f:
             dataset = pickle.load(f)
@@ -695,10 +705,1021 @@ if __name__ == "__main__":
         print("Number of demos: ", args.num_demos)
         print(f"TASK: bigSteps_10000demos_rotation")
 
-    
+    elif args.training_selection == 38:
+        # Sliding
+        # + network: 1024
+        # + Norm 
+        print(f"Big step with sliding - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/bigSteps_10000demos_slide', 'rb') as f:
+            dataset = pickle.load(f)
 
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print(f"TASK: bigSteps_10000demos_slide")
+
+    elif args.training_selection == 39:
+        # Sliding
+        # + action norm
+        # + network: 1024
+        # + Norm 
+        print(f"Big step with sliding - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/bigSteps_10000demos_slide', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        action_mean = np.mean(dataset['actions'], axis=0)
+        action_std = np.std(dataset['actions'], axis=0)
+        action_norm = normalize(dataset['actions'], action_mean, action_std)
+        dataset['actions'] = action_norm
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print(f"TASK: bigSteps_10000demos_slide")
+
+    elif args.training_selection == 40:
+        # NOOOO
+        # Sliding with end indicator
+        # + action norm
+        # + network: 1024
+        # + Norm
+
+        '''
+        print(f"Big step with slide stop indicator - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/bigSteps_10000demos_slide_endIndicator', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        action_mean = np.mean(dataset['actions'], axis=0)
+        action_std = np.std(dataset['actions'], axis=0)
+        action_norm = normalize(dataset['actions'], action_mean, action_std)
+        dataset['actions'] = action_norm
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print(f"TASK: bigSteps_10000demos_slide_endIndicator")
+        '''
+        raise ValueError("Invalid training selection")
+
+    elif args.training_selection == 41:
+        # Sliding
+        # + action norm (max, min)
+        # + network: 1024
+        # + Norm (max, min)
+        print(f"Big step with sliding - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/bigSteps_10000demos_slide', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_max = np.max(dataset['desired_goals'], axis=0)
+        goal_min = np.min(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize_max_min(dataset['desired_goals'], min=goal_min, max=goal_max)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_max = np.max(dataset['observations'], axis=0)
+        obs_min = np.min(dataset['observations'], axis=0)
+        obs_norm = normalize_max_min(dataset['observations'], min=obs_min, max=obs_max)
+        dataset['observations'] = obs_norm
+
+        action_max = np.max(dataset['actions'], axis=0)
+        action_min = np.min(dataset['actions'], axis=0)
+        action_norm = normalize_max_min(dataset['actions'], min=action_min, max=action_max)
+        dataset['actions'] = action_norm
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print(f"TASK: bigSteps_10000demos_slide")
+
+    elif args.training_selection == 42:
+        # Sliding
+        # + network: 1024
+        # + Norm (max, min)
+        print(f"Big step with sliding - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/bigSteps_10000demos_slide', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_max = np.max(dataset['desired_goals'], axis=0)
+        goal_min = np.min(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize_max_min(dataset['desired_goals'], min=goal_min, max=goal_max)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_max = np.max(dataset['observations'], axis=0)
+        obs_min = np.min(dataset['observations'], axis=0)
+        obs_norm = normalize_max_min(dataset['observations'], min=obs_min, max=obs_max)
+        dataset['observations'] = obs_norm
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print(f"TASK: bigSteps_10000demos_slide")
+
+    elif args.training_selection == 43:
+        # Sliding with end indicator
+        # + action norm (max, min)
+        # + network: 1024
+        # + Norm (max, min)
+        print(f"Big step with slide stop indicator - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/bigSteps_10000demos_slide_endIndicator', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_max = np.max(dataset['desired_goals'], axis=0)
+        goal_min = np.min(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize_max_min(dataset['desired_goals'], min=goal_min, max=goal_max)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_max = np.max(dataset['observations'], axis=0)
+        obs_min = np.min(dataset['observations'], axis=0)
+        obs_norm = normalize_max_min(dataset['observations'], min=obs_min, max=obs_max)
+        dataset['observations'] = obs_norm
+
+        action_max = np.max(dataset['actions'], axis=0)
+        action_min = np.min(dataset['actions'], axis=0)
+        action_norm = normalize_max_min(dataset['actions'], min=action_min, max=action_max)
+        dataset['actions'] = action_norm
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print(f"TASK: bigSteps_10000demos_slide_endIndicator")
+    
+    elif args.training_selection == 44:
+        # Sliding with end indicator
+        # + network: 1024
+        # + Norm (max, min)
+        print(f"Big step with slide stop indicator - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/bigSteps_10000demos_slide_endIndicator', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_max = np.max(dataset['desired_goals'], axis=0)
+        goal_min = np.min(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize_max_min(dataset['desired_goals'], min=goal_min, max=goal_max)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_max = np.max(dataset['observations'], axis=0)
+        obs_min = np.min(dataset['observations'], axis=0)
+        obs_norm = normalize_max_min(dataset['observations'], min=obs_min, max=obs_max)
+        dataset['observations'] = obs_norm
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print(f"TASK: bigSteps_10000demos_slide_endIndicator")
+
+    elif args.training_selection == 46:
+        # Sliding
+        # + network: 1024
+        # + Norm
+        # 50k demo
+        print(f"Big step with sliding - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/bigSteps_50kdemos_slide_withJointDR', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print("Layer Dim: ", args.layer_dim)
+        print(f"TASK: bigSteps_50kdemos_slide_withJointDR")
+    
+    elif args.training_selection == 47:
+        # Sliding
+        # + network: 1024
+        # + Norm
+        # 50k demo
+        # No DR
+        print(f"Big step with sliding - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/bigSteps_50kdemos_slide', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print("Layer Dim: ", args.layer_dim)
+        print(f"TASK: bigSteps_50kdemos_slide")
+
+    elif args.training_selection == 48:
+        # Sliding
+        # + network: 1024
+        # + Norm
+        # 50k demo
+        # No DR
+        # Isolated End Indicator
+        print(f"Big step with slide stop indicator - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/bigSteps_50kdemos_slide_endIndicator', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        continue_action = dataset['actions'][:,2].reshape(-1, 1)
+        dataset['actions'] = continue_action
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print(f"TASK: bigSteps_50kdemos_slide_endIndicator")
+
+    elif args.training_selection == 49:
+        # Sliding
+        # + network: 1024
+        # + Norm
+        # 50k demo
+        # No DR
+        # Only continuous
+        print(f"Big step with slide stop indicator - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/bigSteps_50kdemos_slide_endIndicator', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        continue_action = dataset['actions'][:,0].reshape(-1, 1)
+        dataset['actions'] = continue_action
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print(f"TASK: bigSteps_50kdemos_slide_endIndicator")
+
+    elif args.training_selection == 50:
+        # Sliding
+        # + network: 1024
+        # + Norm
+        # 50k demo
+        # No DR
+        # Only discrete control mode
+        print(f"Big step with slide stop indicator - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/bigSteps_50kdemos_slide', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        continue_action = dataset['actions'][:,1].reshape(-1, 1)
+        dataset['actions'] = continue_action
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print(f"TASK: bigSteps_50kdemos_slide")
+
+    elif args.training_selection == 51:
+        # Sliding
+        # + network: 1024
+        # + Norm
+        # + 10k demo
+        # + only terminate
+        print(f"Big step with slide stop indicator - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/bigSteps_10000demos_slide_endIndicator', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        continue_action = dataset['actions'][:,2].reshape(-1, 1)
+        dataset['actions'] = continue_action
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print(f"TASK: bigSteps_10000demos_slide_endIndicator")
+
+    elif args.training_selection == 52:
+        # Sliding
+        # + network: 1024
+        # + Norm
+        # + 50k demo
+        # + No DR
+        # + Isolated End Indicator
+        # + 20000
+        print(f"Big step with slide stop indicator - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/bigSteps_50kdemos_slide_endIndicator', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        continue_action = dataset['actions'][:,2].reshape(-1, 1)
+        dataset['actions'] = continue_action
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print(f"TASK: bigSteps_50kdemos_slide_endIndicator")
+    
+    elif args.training_selection == 53:
+        # Sliding
+        # + random demo collection
+        # + network: 1024
+        # + Norm
+        # + 10k demo
+        # + No DR
+        print(f"Big step with slide - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/bigSteps_10k_demos_random_slide', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+
+    elif args.training_selection == 54:
+        # Sliding
+        # + random demo collection
+        # + network: 1024
+        # + Norm
+        # + 10k demo
+        # + End
+        # + 30000 epoch
+        print(f"Big step with slide stop indicator - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/bigSteps_10k_demos_random_slide', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        dataset['actions'] = np.expand_dims(dataset['terminals'].copy(), axis=1)
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print("bigSteps_10k_demos_random_slide")
+        print("End indicator")
+
+    elif args.training_selection == 55:
+        print("Predict the start pose for rotation")
+        dir = 'dataset/rotation_start_pose_prediction_dataset'
+        with open(dir, 'rb') as f:
+            dataset = pickle.load(f)
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        
+        print("Number of demos: ", args.num_demos)
+        print("rotation_start_pose_prediction")
+        print(dir)
+
+    elif args.training_selection == 56:
+        # Sliding
+        # + random demo collection
+        # + network: 1024
+        # + Norm
+        # + 10k demo
+        # + End
+        # + 30000 epoch
+        print(f"Big step with slide stop indicator - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/bigSteps_10k_demos_random_slide', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        action = dataset['actions'][:,0]
+        dataset['actions'] = np.expand_dims(action.copy(), axis=1)
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print("bigSteps_10k_demos_random_slide")
+        print("End indicator")
+
+    elif args.training_selection == 57:
+        # Sliding
+        # + random demo collection
+        # + network: 1024
+        # + Norm
+        # + 10k demo
+        # + End
+        # + 30000 epoch
+        print(f"Big step with slide stop indicator - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/train.pkl', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        action = dataset['actions'][:,0]
+        dataset['actions'] = np.expand_dims(action.copy(), axis=1)
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print("train dataset")
+
+    elif args.training_selection == 58:
+        # Sliding
+        # + network: 1024
+        # + Norm
+        # 10k demo
+        # + cube cylinder
+        print(f"Big step with sliding - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/train_bigSteps_10k_cube_cylinder_slide', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        action = dataset['actions'][:,0]
+        dataset['actions'] = np.expand_dims(action.copy(), axis=1)
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print("Layer Dim: ", args.layer_dim)
+        print(f"TASK: cube cylinder only sliding")
+    
+    elif args.training_selection == 59:
+        # Sliding
+        # + network: 1024
+        # + Norm
+        # + 10k demo
+        # + cube
+        print(f"Big step with sliding - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/bigSteps_10000demos_slide', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        action = dataset['actions'][:,0]
+        dataset['actions'] = np.expand_dims(action.copy(), axis=1)
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print("Layer Dim: ", args.layer_dim)
+        print(f"TASK: cube only sliding")
+
+    elif args.training_selection == 60:
+        # Isolate rotation part as an individual policy
+        # + network: 1024
+        # + Norm
+        # + 10k demo
+        # + cube cylinder
+        print(f"Big step only Rotation - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/train_bigSteps_10k_cube_cylinder_rotation', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print(f"TASK: train_bigSteps_10k_cube_cylinder_rotation")
+
+    elif args.training_selection == 61:
+        # Isolate rotation part as an individual policy
+        # + network: 1024
+        # + Norm
+        # + 10k demo
+        print(f"Big step only Rotation - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/bigSteps_10000demos_rotation', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print(f"TASK: bigSteps_10000demos_rotation")
+
+    elif args.training_selection == 62:
+        # Sliding
+        # + network: 1024
+        # + Norm
+        # 10k demo
+        # + cube cylinder
+        # + remove obs velocity in obs
+        print(f"Big step with sliding - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/train_bigSteps_10k_cube_cylinder_slide_noObjVel', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        action = dataset['actions'][:,0]
+        dataset['actions'] = np.expand_dims(action.copy(), axis=1)
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print("Layer Dim: ", args.layer_dim)
+        print(f"TASK: cube cylinder only sliding without object velocity")
+        print("train_bigSteps_10k_cube_cylinder_slide_noObjVel")
+
+    elif args.training_selection == 63:
+        # Isolate rotation part as an individual policy
+        # + network: 1024
+        # + Norm
+        # + 10k demo
+        # + cube cylinder
+        # + remove obs velocity in obs
+        print(f"Big step only Rotation - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/train_bigSteps_10k_cube_cylinder_rotation_noObjVel', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print(f"TASK: train_bigSteps_10k_cube_cylinder_rotation_noObjVel")
+
+    elif args.training_selection == 64:
+        # Sliding
+        # + network: 1024
+        # + Norm
+        # 10k demo
+        # + three cylinder
+        # remove obs velocity in obs
+        print(f"Big step with sliding - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/train_bigSteps_10k_three_cylinder_slide_noObjVel', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        action = dataset['actions'][:,0]
+        dataset['actions'] = np.expand_dims(action.copy(), axis=1)
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print("Layer Dim: ", args.layer_dim)
+        print(f"TASK: three cylinder only sliding without object velocity")
+        print("train_bigSteps_10k_three_cylinder_slide_noObjVel")
+
+    elif args.training_selection == 65:
+        # Rotation
+        # + network: 1024
+        # + Norm
+        # + 10k demo
+        # + three cylinder
+        print(f"Big step only Rotation - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/train_bigSteps_10k_three_cylinder_rotation_noObjVel', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print(f"TASK: train_bigSteps_10k_three_cylinder_rotation_noObjVel")
+
+    elif args.training_selection == 66:
+        # Sliding
+        # + network: 1024
+        # + Norm
+        # 10k demo
+        # + cube1cm
+        # remove obs velocity in obs
+        print(f"Big step with sliding - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/cube1cm/train_10k_cube_1cm_noObjVel_slide', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        action = dataset['actions'][:,0]
+        dataset['actions'] = np.expand_dims(action.copy(), axis=1)
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print("Layer Dim: ", args.layer_dim)
+        print("train_10k_cube_1cm_noObjVel_slide")
+
+    elif args.training_selection == 67:
+        # Rotation
+        # + network: 1024
+        # + Norm
+        # + 10k demo
+        # + cube1cm
+        print(f"Big step only Rotation - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/cube1cm/train_10k_cube_1cm_noObjVel_rotation', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print(f"TASK: train_10k_cube_1cm_noObjVel_rotation")
+
+    elif args.training_selection == 68:
+        # Sliding
+        # + network: 1024
+        # + Norm
+        # 10k demo
+        # + cube2cm
+        # remove obs velocity in obs
+        print(f"Big step with sliding - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/cube2cm/train_10k_cube_2cm_noObjVel_slide', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        action = dataset['actions'][:,0]
+        dataset['actions'] = np.expand_dims(action.copy(), axis=1)
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print("Layer Dim: ", args.layer_dim)
+        print("train_10k_cube_2cm_noObjVel_slide")
+
+    elif args.training_selection == 69:
+        # Rotation
+        # + network: 1024
+        # + Norm
+        # + 10k demo
+        # + cube2cm
+        print(f"Big step only Rotation - network layer dimension: {args.layer_dim}")
+        with open(f'dataset/cube1cm/train_10k_cube_2cm_noObjVel_rotation', 'rb') as f:
+            dataset = pickle.load(f)
+
+        goal_mean = np.mean(dataset['desired_goals'], axis=0)
+        goal_std = np.std(dataset['desired_goals'], axis=0)
+        desired_goal_norm = normalize(dataset['desired_goals'], goal_mean, goal_std)
+        dataset['desired_goals'] = desired_goal_norm
+
+        obs_mean = np.mean(dataset['observations'], axis=0)
+        obs_std = np.std(dataset['observations'], axis=0)
+        obs_norm = normalize(dataset['observations'], obs_mean, obs_std)
+        dataset['observations'] = obs_norm
+
+        for key in dataset.keys(): 
+            print(np.shape(dataset[key]))
+        num = 0
+        for i, item in enumerate(dataset['terminals']):
+            if item:
+                num += 1
+        print("Number of episode: ", num)
+        print("Number of demos: ", args.num_demos)
+        print(f"TASK: train_10k_cube_2cm_noObjVel_rotation")
+
+        
     else:
-        assert args.training_selection == 38, f"Wrong training index {args.training_selection}"
+        assert args.training_selection == 70, f"Wrong training index {args.training_selection}"
         # Others
         # Training a slide action that takes mid goal as desired goal
 
@@ -737,6 +1758,15 @@ if __name__ == "__main__":
         output_dir = f'models_{args.training_selection}_{args.num_demos}_{args.h1}_{args.h2}_{args.h3}'
     else:
         output_dir = f'models_{args.training_selection}_{args.layer_dim}'
+    
+    if os.path.exists(output_dir):
+        counter = 1
+        new_output_dir = f"{output_dir}_{counter}"
+        while os.path.exists(new_output_dir):
+            counter += 1
+            new_output_dir = f"{output_dir}_{counter}"
+        output_dir = new_output_dir
+
     os.makedirs(output_dir, exist_ok=True)
     training_iters = 0
 
@@ -753,6 +1783,8 @@ if __name__ == "__main__":
         agent.load_model('models_28_1024', 20000)
     elif args.training_selection == 27:
         agent.load_model('models_27_1024', 20000)
+    elif args.training_selection == 52:
+        agent.load_model('models_48_1024', 20000)
 
     max_timesteps = args.num_epochs * args.num_steps_per_epoch
     while (training_iters < max_timesteps):
@@ -771,5 +1803,7 @@ if __name__ == "__main__":
 
         if curr_epoch % 100 == 0:
             agent.save_model(output_dir, curr_epoch)
+        
+
 
     writer.close()
