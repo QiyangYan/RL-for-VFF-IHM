@@ -9,7 +9,7 @@ from normalizer import Normalizer
 
 
 class Agent:
-    def __init__(self, n_states, n_actions, n_goals, action_bounds, capacity, env,
+    def __init__(self, n_states, n_actions, n_goals, action_bounds, capacity, env, local,
                  k_future,
                  batch_size,
                  action_size=1,
@@ -25,6 +25,7 @@ class Agent:
         self.action_bounds = action_bounds
         self.action_size = action_size
         self.env = env
+        self.local = local
 
         self.actor = Actor(self.n_states, n_actions=self.n_actions, n_goals=self.n_goals).to(self.device)
         self.critic = Critic(self.n_states, action_size=self.action_size, n_goals=self.n_goals).to(self.device)
@@ -37,7 +38,7 @@ class Agent:
         self.gamma = gamma
 
         self.capacity = capacity
-        self.memory = Memory(self.capacity, self.k_future, self.env)
+        self.memory = Memory(self.capacity, self.k_future, self.env, self.local)
 
         self.batch_size = batch_size
         self.actor_lr = actor_lr
@@ -66,9 +67,13 @@ class Agent:
                                                size=self.n_actions)
             action += np.random.binomial(1, 0.3, 1)[0] * (random_actions - action)
 
-        return action
+        # TODO: Modify this to include rotation
+        # only_sliding_action = action[1] * 2 / 3 - 1 / 3
+        # action[1] = only_sliding_action
+        return action, state, goal
 
     def store(self, mini_batch):
+        ''' Mini-batch is the episode_dict of two episodes '''
         # print(mini_batch)
         for batch in mini_batch:
             self.memory.add(batch)
@@ -125,15 +130,15 @@ class Agent:
 
         return actor_loss.item(), critic_loss.item()
 
-    def save_weights(self):
+    def save_weights(self, name='VariableFriction'):
         torch.save({"actor_state_dict": self.actor.state_dict(),
                     "state_normalizer_mean": self.state_normalizer.mean,
                     "state_normalizer_std": self.state_normalizer.std,
                     "goal_normalizer_mean": self.goal_normalizer.mean,
-                    "goal_normalizer_std": self.goal_normalizer.std}, "result/VariableFriction.pth")
+                    "goal_normalizer_std": self.goal_normalizer.std}, f"result/{name}.pth")
 
-    def load_weights(self):
-        checkpoint = torch.load("pretrained_policy/VariableFriction.pth")
+    def load_weights(self, path="pretrained_policy/VariableFriction.pth"):
+        checkpoint = torch.load(path)
         actor_state_dict = checkpoint["actor_state_dict"]
         self.actor.load_state_dict(actor_state_dict)
         state_normalizer_mean = checkpoint["state_normalizer_mean"]
@@ -145,8 +150,9 @@ class Agent:
         goal_normalizer_std = checkpoint["goal_normalizer_std"]
         self.goal_normalizer.std = goal_normalizer_std
 
-    def load_weights_play(self):
-        checkpoint = torch.load("result/VariableFriction.pth")
+    def load_weights_play(self, path="result/VariableFriction.pth"):
+        checkpoint = torch.load(path, map_location=torch.device('cpu'))
+        # print(checkpoint["state_normalizer_mean"])
         actor_state_dict = checkpoint["actor_state_dict"]
         self.actor.load_state_dict(actor_state_dict)
         state_normalizer_mean = checkpoint["state_normalizer_mean"]
@@ -173,7 +179,6 @@ class Agent:
         self.goal_normalizer.update(goals)
         self.state_normalizer.recompute_stats()
         self.goal_normalizer.recompute_stats()
-
 
     @staticmethod
     def sync_networks(network):

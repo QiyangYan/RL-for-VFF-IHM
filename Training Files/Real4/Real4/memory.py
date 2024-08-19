@@ -6,12 +6,13 @@ from torch import device
 
 
 class Memory:
-    def __init__(self, capacity, k_future, env):
+    def __init__(self, capacity, k_future, env, local):
         self.capacity = capacity
         self.memory = []
         self.memory_counter = 0
         self.memory_length = 0
         self.env = env
+        self.local = local
         self.device = device('cpu')
 
         self.future_p = 1 - (1. / (1 + k_future))
@@ -61,7 +62,9 @@ class Memory:
         # print(desired_goals)
         # print("test:",self.env.compute_reward(next_achieved_goals, desired_goals, None)["RL_IHM"])
         # rewards = np.expand_dims(self.env.compute_reward(next_achieved_goals, desired_goals, None)["RL_IHM"], 1)
-        rewards = self.env.unwrapped.compute_reward(next_achieved_goals, desired_goals, None)["RL_IHM"]
+        # TODO: Uncommend this for E2E training
+        rewards = self.env.unwrapped.compute_reward(next_achieved_goals, desired_goals, None)["E2E_IHM"]
+        # rewards = self.env.unwrapped.compute_reward(next_achieved_goals, desired_goals, None)["RL_IHM"]
         # print("reward: ", rewards)
 
         # states = torch.Tensor(self.clip_obs(states)).to(self.device)
@@ -129,9 +132,13 @@ class Memory:
         # get 100 number of transition randomly from two episode
         episode_length = (len(batch[0]["next_state"]), len(batch[1]["next_state"]))
         # print(episode_length)
-        size = 2000
+        if self.local:
+            size = 200
+        else:
+            size = 1000
         ep0_prob = episode_length[0]/np.sum(episode_length)
-        probabilities = [ep0_prob, 1-ep0_prob]
+        probabilities = [ep0_prob, 1-ep0_prob]  # longer/worse episode are more likely to be sampled
+        # probabilities = [1-ep0_prob, ep0_prob]
         ep_indices = np.random.choice(range(len(batch)), size, p=probabilities)
 
         # store these transitions into new array
@@ -158,6 +165,10 @@ class Memory:
         # future_offset = np.random.uniform(size=size) * (len(batch[0]["next_state"]) - time_indices)
         future_offset = np.array(future_offset).astype(int)
         future_t = (time_indices + 1 + future_offset)[her_indices]
+
+        # print(future_t)
+        # print(future_offset)
+        # print(time_indices)
 
         future_ag = []  # future achieved goal
         for episode, f_offset in zip(ep_indices[her_indices], future_t):

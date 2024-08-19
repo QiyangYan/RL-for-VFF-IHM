@@ -1,0 +1,3 @@
+Wed Jul 17 00:17:59 2024
+WARNING: mju_openResource: unknown file '/Users/qiyangyan/anaconda3/envs/FYP_real/lib/python3.9/site-packages/gymnasium_robotics/envs/assets/IHM_simple_convex/three_cylinder.xml'
+

@@ -16,13 +16,13 @@ class ROTATION:  # this class contains functions for rotation
         action[0] = angle
         return action
 
-    def start_rotation(self, action, rotation_precision):
+    def start_rotation(self, action, rotation_precision, episode_dict):
         ''' start of rotation might be hard'''
-        action[0] = np.clip((action[0] + 0.1), 0, 1.65)
+        action[0] = np.clip((action[0] - 0.05), 0, 1.65)
         next_env_dict, reward_dict, terminated, truncated, info = self.env.step(action)
         if terminated is True:
             print("Terminated")
-            return terminated, reward_dict
+            return terminated, reward_dict, next_env_dict, episode_dict
 
         self.rotation_start_pos = reward_dict["pos_control_position"]
 
@@ -31,38 +31,41 @@ class ROTATION:  # this class contains functions for rotation
         start_reward = reward
         last_reward = reward
 
-        print("Start: ", action[0], reward_dict["pos_control_position"])
+        # print("Start: ", action[0], reward_dict["pos_control_position"])
         while True:
             ''' - 0.005 * (start_reward-reward) / start_reward) is added to slows down the movement 
             when get close to the target'''
             # action[0] = np.clip((action[0] + 0.01 - 0.005 * (start_reward-reward) / start_reward), 0, 1.65)
-            action[0] = np.clip((action[0] + 0.01), 0, 1.65)
+            action[0] = np.clip((action[0] - 0.01), 0, 1.65)
             next_env_dict, reward_dict, terminated, truncated, info = self.env.step(np.array(action))
             if terminated:
                 print("Terminated")
-                return terminated, reward_dict
+                return terminated, reward_dict, next_env_dict, episode_dict
+
+            episode_dict['trajectory'].append(next_env_dict['observation'])
 
             while action[0] - reward_dict["pos_control_position"] > 0.1:
-                print(action[0], reward_dict["pos_control_position"])
+                # print(action[0], reward_dict["pos_control_position"])
                 next_env_dict, reward_dict, terminated, truncated, info = self.env.step(np.array(action))
                 if terminated:
                     print("Terminated")
-                    return terminated, reward_dict
+                    return terminated, reward_dict, next_env_dict, episode_dict
             last_reward = reward
             reward = reward_dict["current_goal_centre_distance"]
-
-            if last_reward < reward < rotation_precision:
+            # input("Press")
+            if last_reward < reward or reward < rotation_precision:
                 break
 
         action[0] = reward_dict["pos_control_position"]
         next_env_dict, reward_dict, terminated, truncated, info = self.env.step(np.array(action))
         if terminated is True:
             print("Terminated")
-            return terminated, reward_dict
+            return terminated, reward_dict, next_env_dict, episode_dict
 
         # action[0] = reward_dict["pos_control_position"]
         self.rotate_end_pos = action
-        return terminated, reward_dict
+        # print("Action after rotation: ", action)
+        return terminated, reward_dict, next_env_dict, episode_dict
 
     # def reverse_rotate(self, pos_idx):
     #     """ moves back to the rotation start position to get ready for the next episode """

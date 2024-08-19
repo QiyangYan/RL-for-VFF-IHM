@@ -12,14 +12,16 @@ class COMMON:
         pick_up_action = [0, 2, False]
         # print("start picking")
         'The position position-controlled finger reaches the middle'
-        while True: # for _ in range(105):
+        while True:  # for _ in range(105):
             # pick_up_action[0] += 0.01
             pick_up_action[0] = 0.9557
             # print(pick_up_action[0])
             state, reward, _, _, _ = self.env.step(np.array(pick_up_action))
             # while not reward['action_complete']:
             #     state, reward, _, _, _ = self.env.step(np.array(pick_up_action))
+            # print(state["observation"][0])
             if abs(state["observation"][0] - pick_up_action[0]) < 0.003:
+                # print("Pick up complete")
                 break
 
         # print("closing")
@@ -33,10 +35,10 @@ class COMMON:
         if inAir is True:
             print("Lifting the block")
             while True: # for _ in range(120):
-                _, reward, _, _, _ = self.env.step(np.array(lift_action))
+                state, reward, _, _, _ = self.env.step(np.array(lift_action))
                 if reward["action_complete"]:
                     break
-        return reward
+        return state, reward
 
     @staticmethod
     def action_preprocess(action):
